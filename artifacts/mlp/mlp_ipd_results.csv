@@ -1,0 +1,5 @@
+method,n,successes,success_rate,ci_low,ci_high,mean_coop,mean_return
+standard_pg,100,0,0.00,0.000,0.037,0.000,9.69
+meta_pg,100,2,0.02,0.006,0.070,0.035,10.51
+lola_style,100,11,0.11,0.063,0.186,0.200,14.38
+meta_mapg,100,23,0.23,0.158,0.322,0.370,18.20
