@@ -227,7 +227,11 @@ V_0e^{-\mu_{\lambda_c}\alpha_0 N_0}
 \right),
 \end{aligned}
 \]
-where $V_0=\|\phi_0-\phi^\ast_{\lambda_c}\|^2$. Hence for any target failure probability $\delta$, choosing $N_0=O((\mu_{\lambda_c}\alpha_0)^{-1}\log(V_0/(\delta\rho^2)))$ and $\alpha_0$ small enough gives phase-2 entry with probability at least $1-\delta$. On this event,
+where $V_0=\|\phi_0-\phi^\ast_{\lambda_c}\|^2$. Hence for any target failure probability $\delta$, choosing
+\[
+N_0=O\!\left((\mu_{\lambda_c}\alpha_0)^{-1}\log\tfrac{V_0}{\delta\rho^2}\right)
+\]
+and $\alpha_0$ small enough gives phase-2 entry with probability at least $1-\delta$. On this event,
 \[
 \|\phi_{N_0}-\phi^\ast\|
 \le
@@ -292,7 +296,8 @@ Prior work builds opponent-shaping algorithms. LOLA differentiates through an op
   \centering
   \caption{Positioning among opponent-aware methods. ``Nash-preserving'' means the stated theory preserves the original game's stable Nash target rather than merely optimising a shaped meta-objective.}
   \label{tab:related}
-  \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lcccc@{}}
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lcccc}
   \toprule
   Method & Convergence guarantee & Shaping mechanism & Opponent model & Nash-preserving\\
   \midrule
@@ -303,7 +308,8 @@ Prior work builds opponent-shaping algorithms. LOLA differentiates through an op
   M-FOS & Empirical & Meta-policy OS & No & No\\
   This work & Local SA + restarts & Two-phase Meta-MAPG & Sample estimates & Yes, by annealing\\
   \bottomrule
-  \end{tabular*}
+  \end{tabular}%
+  }
 \end{table}
 
 Kim et al. study Meta-MAPG as a general meta-learning algorithm for rapid adaptation in mixed-incentive, competitive, and cooperative environments. Our focus is narrower and more local: we isolate the stochastic-approximation structure needed for convergence, make the basin-shaping role of the peer term explicit, and use restarts as the mechanism that turns a local theorem into an equilibrium-search statement.
@@ -406,7 +412,10 @@ $\widehat G_i^{\mathrm{own}}(\tau):=\eta\,\widehat H_{ii}(\tau)^\top\widehat G_i
 
 \paragraph{Peer-learning term.}
 For $\phi_j'=\phi_j+\eta\nabla_{\phi_j}J_j$, differentiating $J_i(\phi_i,\phi_j')$ in $\phi_i$ contributes
-$\eta[\nabla_{\phi_i}\nabla_{\phi_j}J_j]^\top\nabla_{\phi_j}J_i$; under per-agent parameterisation $S_j$ has no $\phi_i$-dependence, so the mixed likelihood-ratio identity collapses to
+\[
+\eta\bigl[\nabla_{\phi_i}\nabla_{\phi_j}J_j\bigr]^\top\nabla_{\phi_j}J_i.
+\]
+Under per-agent parameterisation $S_j$ has no $\phi_i$-dependence, so the mixed likelihood-ratio identity collapses to
 \[
 \nabla_{\phi_i}\nabla_{\phi_j}J_j
 =\E\!\left[R_j(\tau)S_j(\tau)S_i(\tau)^\top\right],
