@@ -1,0 +1,24 @@
+We re-run the basin map with $S=10$ independent policy / sampling seeds per cell on a $21\times21$ grid; the entry probability $\hat P(\text{coop})$ is the per-cell success rate. This replaces the single-seed deterministic indicator with a stochastic estimate that respects the genuine basin-entry probability $\pentry$ from the revised framing.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.95\linewidth]{phase_c_stochastic_basin}
+  \caption{Stochastic basin probability maps. Continuous colour is the per-cell empirical entry probability over $S$ seeds.}
+  \label{fig:phase-c-stoch}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+  \begin{tabular}{lcccc}
+    \toprule
+    Method & $E[\hat P(\text{coop})]$ & total successes / trials & Wilson CI on aggregate \\
+    \midrule
+    PG & 0.268 & 1183/4410 & [0.255, 0.282] \\
+    Meta-PG & 0.274 & 1207/4410 & [0.261, 0.287] \\
+    Peer only & 0.428 & 1889/4410 & [0.414, 0.443] \\
+    Meta-MAPG & 0.429 & 1893/4410 & [0.415, 0.444] \\
+    \bottomrule
+  \end{tabular}
+  \caption{Stochastic basin entry. The Wilson interval uses the aggregate count over the full grid and is a strict lower bound on the per-initial-condition uncertainty.}
+  \label{tab:phase-c-stoch}
+\end{table}

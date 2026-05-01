@@ -1,0 +1,33 @@
+We compute deterministic-classification basin maps at 51$\times$51 resolution for each of the four learning rules. Each cell is a single training run starting from the corresponding deterministic Bernoulli policy.
+
+\begin{figure}[h]
+  \centering
+  \begin{subfigure}[t]{0.55\linewidth}
+    \centering\includegraphics[width=\linewidth]{phase_b_basin_atlas}
+    \caption{Basin atlas (success indicator).}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.42\linewidth}
+    \centering\includegraphics[width=\linewidth]{phase_b_frontier_overlay}
+    \caption{Empirical separatrix overlay.}
+  \end{subfigure}
+  \caption{Four-method basin atlas in tabular Stag Hunt. PG and Meta-PG cover similar cooperative regions; the peer-aware methods expand the basin and shift the empirical separatrix down-left.}
+  \label{fig:phase-b-atlas}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+  \begin{tabular}{lcc}
+    \toprule
+    Method & Coop.\ basin fraction & 95\% Wilson CI \\
+    \midrule
+    PG & 25.9\% & [24.3\%, 27.6\%] \\
+    Meta-PG & 26.4\% & [24.7\%, 28.1\%] \\
+    Peer only & 42.9\% & [41.0\%, 44.8\%] \\
+    Meta-MAPG & 42.3\% & [40.4\%, 44.2\%] \\
+    \bottomrule
+  \end{tabular}
+  \caption{Basin fractions over the full grid. Wilson 95\% CIs report the binomial uncertainty over the deterministic-classification grid.}
+  \label{tab:phase-b-fractions}
+\end{table}
+
+Basin expansion ratios relative to PG: Peer only~$=1.66\times$, Meta-MAPG~$=1.63\times$, Meta-PG~$=1.02\times$.

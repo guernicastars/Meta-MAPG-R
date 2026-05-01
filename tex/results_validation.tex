@@ -1,0 +1,89 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{siunitx}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{caption}
+\usepackage{xcolor}
+
+\graphicspath{{../figures/validation/}{../figures/}{../artifacts/validation/}{../artifacts/main/}}
+
+\title{Validation Experiments for Basin-Entry Meta-MAPG}
+\author{Auto-generated companion to \texttt{Meta-MAPG-R/main.tex}}
+\date{\today}
+
+\newcommand{\pentry}{\hat{p}_{\mathrm{entry}}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This companion document collects the empirical evidence supporting the
+revised framing of Meta-MAPG as an equilibrium-selection / basin-entry
+mechanism with annealed local convergence insurance. Each section is
+populated automatically as the corresponding experiment phase finishes;
+sections that have not yet completed appear as \emph{[pending]} stubs.
+\end{abstract}
+
+\tableofcontents
+
+\section{Setup and notation}
+
+We use the one-shot tabular Stag Hunt with cooperate-cooperate payoff
+$R=4$, mutual defect $P=2$, sucker $S=0$, temptation $T=3$ unless
+otherwise stated. Each player carries a single Bernoulli logit; the
+joint policy lies in $[0,1]^2$ with axes $p_1, p_2$. The success
+threshold for the payoff-dominant outcome is $\tau=0.82$ throughout the
+main text and is varied in Phase~F. The success metric for a single
+trajectory is $\min(p_1^T, p_2^T) \ge \tau$; the basin fraction is the
+average of this indicator over a uniform grid of initial policies.
+
+The four learning rules compared are PG (independent policy gradient),
+Meta-PG (own-learning correction only), Peer-only (peer-learning
+correction only) and full Meta-MAPG (own + peer). All other settings
+match \texttt{run\_meta\_mapg\_experiments.py}: inner step $0.55$,
+outer step $0.9 / (t+10)^{0.24}$, peer coefficient $\lambda=1.5$, own
+coefficient $0.35$.
+
+% =====================================================================
+\section{Phase A : expected update directions}\label{sec:phase-a}
+
+\input{phase_a.tex}
+
+% =====================================================================
+\section{Phase B : four-method basin atlas at 51$\times$51}\label{sec:phase-b}
+
+\input{phase_b.tex}
+
+% =====================================================================
+\section{Phase C : stochastic basin maps}\label{sec:phase-c}
+
+\input{phase_c.tex}
+
+% =====================================================================
+\section{Phase D : four-arm shape-then-cool ablation}\label{sec:phase-d}
+
+\input{phase_d.tex}
+
+% =====================================================================
+\section{Phase E : coordination-game family sweep}\label{sec:phase-e}
+
+\input{phase_e.tex}
+
+% =====================================================================
+\section{Phase F : threshold robustness}\label{sec:phase-f}
+
+\input{phase_f.tex}
+
+\end{document}

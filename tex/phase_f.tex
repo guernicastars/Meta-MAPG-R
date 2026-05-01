@@ -1,0 +1,19 @@
+We re-classify all basin endpoints from Phase~B and from the original main-text 21$\times$21 sweep using thresholds $\tau \in \{0.75, 0.82, 0.90\}$. The qualitative ordering of the methods is preserved at every threshold; the quantitative gap between PG and the peer-aware methods grows as $\tau$ tightens.
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{llccc}
+  \toprule
+  Source & Method & $\tau=0.75$ & $\tau=0.82$ & $\tau=0.90$ \\
+  \midrule
+  main\_basin & Meta-MAPG & 42.6\% & 42.6\% & 42.6\% \\
+  main\_basin & PG & 27.2\% & 27.0\% & 27.0\% \\
+  phase\_b\_full\_grid & Peer only & 42.9\% & 42.9\% & 42.8\% \\
+  phase\_b\_full\_grid & Meta-MAPG & 42.4\% & 42.3\% & 42.2\% \\
+  phase\_b\_full\_grid & Meta-PG & 26.5\% & 26.4\% & 26.1\% \\
+  phase\_b\_full\_grid & PG & 26.0\% & 25.9\% & 25.7\% \\
+  \bottomrule
+\end{tabular}
+  \caption{Threshold robustness. The qualitative ordering is invariant in $\tau$.}
+  \label{tab:phase-f-tau}
+\end{table}

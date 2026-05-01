@@ -1,0 +1,24 @@
+All four arms share initial policies and step-size schedule. The warm-Meta-MAPG $\to$ pure-PG arm is the explicit version of the algorithm advocated in the repositioning report: the peer correction is used only to enter the cooperative basin, then removed entirely so the long-run dynamics is exactly ordinary policy gradient with vanishing step-size.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.95\linewidth]{phase_d_anneal_4arm}
+  \caption{Four-arm shape-then-cool. Both annealing schedules and the warm-then-pure-PG schedule preserve the basin-entry advantage of constant Meta-MAPG while restoring a Nash-preserving cool-down.}
+  \label{fig:phase-d-anneal}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+  \begin{tabular}{lccc}
+    \toprule
+    Arm & Final coop.\ rate & 2nd-half coop.\ mean & 2nd-half coop.\ std \\
+    \midrule
+    PG & 27.5\% & 0.274 & 0.003 \\
+    Meta-MAPG (const.\ $\lambda$) & 41.2\% & 0.408 & 0.004 \\
+    Meta-MAPG (two-phase) & 40.0\% & 0.396 & 0.003 \\
+    warm-Meta-MAPG $\to$ pure-PG & 41.2\% & 0.408 & 0.004 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Cool-down preserves basin-entry. The warm-Meta-MAPG $\to$ pure-PG arm matches the constant-$\lambda$ arm in success rate while making the asymptotic dynamics provably Nash-preserving.}
+  \label{tab:phase-d-anneal}
+\end{table}
