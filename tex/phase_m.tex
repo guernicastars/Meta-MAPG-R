@@ -1,0 +1,29 @@
+We sweep the peer coefficient $\lambda$ while keeping the own-learning coefficient fixed. The $\lambda=0$ Meta-MAPG point is therefore the own-correction-only regime, while the dashed baseline is ordinary PG. The best observed setting is $\lambda=5.00$ with basin fraction 63.3\%.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.58\linewidth]{phase_m_lambda_sweep}
+  \caption{Peer-coefficient sweep. The cooperative basin expands once $\lambda$ is positive and keeps increasing over the tested clipped tabular range; this sweep identifies coefficient sensitivity, not an asymptotically safe optimum. The $\lambda=0$ point behaves like the own-only Meta-PG correction.}
+  \label{fig:phase-m-lambda}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lcc}
+  \toprule
+  Method & $\lambda$ & Coop.\ basin fraction \\
+  \midrule
+  PG & -- & 27.0\% \\
+  Meta-MAPG & 0.00 & 26.8\% \\
+  Meta-MAPG & 0.25 & 29.0\% \\
+  Meta-MAPG & 0.50 & 32.2\% \\
+  Meta-MAPG & 1.00 & 38.3\% \\
+  Meta-MAPG & 1.50 & 43.3\% \\
+  Meta-MAPG & 2.00 & 46.9\% \\
+  Meta-MAPG & 3.00 & 55.3\% \\
+  Meta-MAPG & 5.00 & 63.3\% \\
+  \bottomrule
+\end{tabular}
+  \caption{Basin fraction as a function of peer coefficient.}
+  \label{tab:phase-m-lambda}
+\end{table}

@@ -1,9 +1,9 @@
-Phase~E is repeated with multiple independent seeds per cell, enabling Wilson 95\% confidence intervals on the basin fraction at each $(T, \text{method})$ pair. The qualitative ordering---Meta-MAPG $\approx$ Peer-only $>$ PG across all $T$---is confirmed after accounting for stochastic variability.
+Phase~E is repeated with multiple independent seeds per cell, giving an aggregate-binomial screening interval at each $(T, \text{method})$ pair. These Wilson intervals treat the cell--seed trials as independent and are therefore tighter than the cell-bootstrap intervals reported in Phase~Q. The qualitative ordering is still useful as a quick diagnostic.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.65\linewidth]{phase_g_tsweep_multiseed}
-  \caption{Multi-seed $T$-sweep with 95\% Wilson bands. PG and peer-aware confidence bands are non-overlapping at all $T$.}
+  \caption{Multi-seed $T$-sweep with aggregate Wilson bands. Use Phase~Q for the conservative cell-bootstrap intervals.}
   \label{fig:phase-g}
 \end{figure}
 
@@ -20,6 +20,6 @@ Phase~E is repeated with multiple independent seeds per cell, enabling Wilson 95
   3.80 & 2.8 [2.2,3.5]\% & 4.4 [3.6,5.3]\% & 4.4 [3.6,5.3]\% \\
   \bottomrule
 \end{tabular}
-  \caption{Multi-seed $T$-sweep: basin fraction with 95\% Wilson CI.}
+  \caption{Multi-seed $T$-sweep: basin fraction with aggregate 95\% Wilson CI.}
   \label{tab:phase-g}
 \end{table}

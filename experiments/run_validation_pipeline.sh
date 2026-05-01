@@ -39,11 +39,16 @@ run_phase C --phase-c-grid 21 --phase-c-steps 140 --phase-c-batch 128 --phase-c-
 
 # New phases (depend on A and C data above)
 run_phase A2
+run_phase P
 run_phase L
 run_phase D2 --phase-d2-seeds 80 --phase-d2-n0 100 --phase-d2-total 260 --phase-d2-scale 30 --phase-d2-q 0.7 --phase-d2-batch 256
 run_phase G --phase-g-seeds 5 --phase-g-grid 21 --phase-g-steps 140 --phase-g-batch 192
+run_phase Q --phase-q-seeds 5 --phase-q-grid 21 --phase-q-steps 140 --phase-q-batch 192
 run_phase H --phase-h-grids 11 21 51 --phase-h-steps 140 --phase-h-batch 192
 run_phase I --phase-i-grid 51 --phase-i-steps 140 --phase-i-batch 192
+run_phase M --phase-m-grid 21 --phase-m-steps 140 --phase-m-batch 192
+run_phase N --phase-n-grid 21 --phase-n-steps 140 --phase-n-batch 192
+run_phase O
 
 log "BUILD pdf"
 cd tex

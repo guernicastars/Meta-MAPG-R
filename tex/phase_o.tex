@@ -1,0 +1,23 @@
+The basin atlas is converted into gain/loss masks relative to PG. Blue cells are initial policies that fail under PG but succeed under the alternative method; red cells are the reverse. This makes the separatrix movement visible without relying on contour interpolation.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.95\linewidth]{phase_o_gain_masks}
+  \caption{Basin gain/loss masks relative to PG. Peer-only and Meta-MAPG add a large contiguous region below the PG frontier, while Meta-PG adds almost nothing.}
+  \label{fig:phase-o-gain}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lccc}
+  \toprule
+  Method & Gained area & Lost area & Net area \\
+  \midrule
+  Meta-PG & 2.0\% & 1.6\% & 0.5\% \\
+  Peer only & 17.0\% & 0.0\% & 17.0\% \\
+  Meta-MAPG & 16.5\% & 0.0\% & 16.4\% \\
+  \bottomrule
+\end{tabular}
+  \caption{Area changes relative to PG on the Phase~B grid.}
+  \label{tab:phase-o-gain}
+\end{table}

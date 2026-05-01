@@ -1,9 +1,9 @@
-Phase~D used a shared pool of initial policies across all four arms. Here each arm draws its own independent initial policies to verify the conclusion is not a shared-seed artefact. All three peer-aware arms again achieve success rates well above PG.
+Phase~D used a shared pool of initial policies across all four arms. Here each arm draws its own independent initial policies to verify the conclusion is not a shared-seed artefact. This is a weaker, unpaired sanity check; the paired Phase~D estimate remains the primary ablation. All three peer-aware arms again achieve higher point estimates than PG.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.55\linewidth]{phase_d2_audit}
-  \caption{D2: same ablation as Phase~D with independent initial policies per arm. The peer-aware advantage is robust to the seed choice.}
+  \caption{D2: same ablation as Phase~D with independent initial policies per arm. This checks that Phase~D is not an artefact of one shared seed pool, but it has lower power than the paired design.}
   \label{fig:phase-d2}
 \end{figure}
 
@@ -19,6 +19,6 @@ Phase~D used a shared pool of initial policies across all four arms. Here each a
     warm-Meta-MAPG $\to$ pure-PG & 48.8\% & [38.1\%, 59.5\%] \\
     \bottomrule
   \end{tabular}
-  \caption{D2 audit: independent initial conditions confirm the peer-aware advantage is not a seed artefact.}
+  \caption{D2 audit: independent initial conditions confirm the peer-aware point-estimate advantage is not caused by one shared seed pool.}
   \label{tab:phase-d2}
 \end{table}

@@ -57,9 +57,9 @@ def write_phase_a() -> None:
         "  \\centering\n"
         "  \\includegraphics[width=0.95\\linewidth]{phase_a_expected_arrows}\n"
         "  \\caption{Expected update directions in tabular Stag Hunt. Around "
-        "the PG separatrix the Meta-MAPG arrows tilt visibly toward the "
-        "payoff-dominant equilibrium $(C,C)$, which is the local mechanism "
-        "behind the basin shifts in Phases~B and~C.}\n"
+        "the PG separatrix the Meta-MAPG field is redirected relative to PG; "
+        "Phase~P quantifies the component of this redirection toward the "
+        "payoff-dominant equilibrium $(C,C)$.}\n"
         "  \\label{fig:phase-a-arrows}\n"
         "\\end{figure}"
     )
@@ -201,8 +201,8 @@ def write_phase_c() -> None:
     rows.append("    \\bottomrule\n  \\end{tabular}")
     rows.append(
         "  \\caption{Stochastic basin entry. The Wilson interval uses the "
-        "aggregate count over the full grid and is a strict lower bound on the "
-        "per-initial-condition uncertainty.}\n"
+        "aggregate count over the full grid; Phase~Q uses the more conservative "
+        "cell-bootstrap interval for the $T$-sweep.}\n"
         "  \\label{tab:phase-c-stoch}\n"
         "\\end{table}"
     )
@@ -366,6 +366,7 @@ def write_phase_a2() -> None:
     df = pd.read_csv(csv)
     mean_angle = float(df["angle_diff_rad"].abs().mean())
     frac_ccw = float((df["angle_diff_rad"] > 0.1).mean())
+    frac_cw = float((df["angle_diff_rad"] < -0.1).mean())
     body = []
     body.append(
         "We decompose the difference between Meta-MAPG and PG update directions "
@@ -373,17 +374,19 @@ def write_phase_a2() -> None:
         "$\\angle(\\Delta p^{\\mathrm{MM}}) - \\angle(\\Delta p^{\\mathrm{PG}})$ "
         "and (ii) a difference quiver $\\Delta p^{\\mathrm{MM}} - \\Delta p^{\\mathrm{PG}}$. "
         f"Mean absolute tilt: ${mean_angle:.3f}$\\,rad. "
-        f"In {frac_ccw*100:.0f}\\% of grid cells the tilt is counter-clockwise "
-        "(positive, toward $(C,C)$), concentrated in the region below the PG separatrix."
+        f"Counter-clockwise and clockwise tilts occur in {frac_ccw*100:.0f}\\% "
+        f"and {frac_cw*100:.0f}\\% of cells, respectively; the field is therefore "
+        "better interpreted as a saddle rotation than as a one-direction tilt."
     )
     body.append(
         "\\begin{figure}[h]\n"
         "  \\centering\n"
         "  \\includegraphics[width=0.95\\linewidth]{phase_a2_angle_diff}\n"
-        "  \\caption{Left: signed angular tilt of Meta-MAPG vs PG (red = "
-        "counter-clockwise, toward $(C,C)$). Right: difference quiver showing "
-        "the additive peer-correction vector. The peer correction primarily "
-        "redirects dynamics in the central mixed-strategy region.}\n"
+        "  \\caption{Left: signed angular tilt of Meta-MAPG vs PG. Right: "
+        "difference quiver showing the additive peer-correction vector. "
+        "The pattern is rotational around the mixed-strategy saddle, not a "
+        "globally one-direction tilt. Phase~P gives the cleaner projection "
+        "onto the direction toward $(C,C)$.}\n"
         "  \\label{fig:phase-a2}\n"
         "\\end{figure}"
     )
@@ -398,17 +401,18 @@ def write_phase_g() -> None:
     body = []
     body.append(
         "Phase~E is repeated with multiple independent seeds per cell, "
-        "enabling Wilson 95\\% confidence intervals on the basin fraction "
-        "at each $(T, \\text{method})$ pair. The qualitative ordering---"
-        "Meta-MAPG $\\approx$ Peer-only $>$ PG across all $T$---is confirmed "
-        "after accounting for stochastic variability."
+        "giving an aggregate-binomial screening interval at each "
+        "$(T, \\text{method})$ pair. These Wilson intervals treat the "
+        "cell--seed trials as independent and are therefore tighter than the "
+        "cell-bootstrap intervals reported in Phase~Q. The qualitative ordering "
+        "is still useful as a quick diagnostic."
     )
     body.append(
         "\\begin{figure}[h]\n"
         "  \\centering\n"
         "  \\includegraphics[width=0.65\\linewidth]{phase_g_tsweep_multiseed}\n"
-        "  \\caption{Multi-seed $T$-sweep with 95\\% Wilson bands. "
-        "PG and peer-aware confidence bands are non-overlapping at all $T$.}\n"
+        "  \\caption{Multi-seed $T$-sweep with aggregate Wilson bands. "
+        "Use Phase~Q for the conservative cell-bootstrap intervals.}\n"
         "  \\label{fig:phase-g}\n"
         "\\end{figure}"
     )
@@ -431,7 +435,7 @@ def write_phase_g() -> None:
     body.append(
         "\\begin{table}[h]\n  \\centering\n"
         + "\n".join(rows)
-        + "\n  \\caption{Multi-seed $T$-sweep: basin fraction with 95\\% Wilson CI.}\n"
+        + "\n  \\caption{Multi-seed $T$-sweep: basin fraction with aggregate 95\\% Wilson CI.}\n"
         "  \\label{tab:phase-g}\n\\end{table}"
     )
     (TEX_DIR / "phase_g.tex").write_text("\n\n".join(body) + "\n")
@@ -448,7 +452,8 @@ def write_phase_h() -> None:
         "We repeat the basin measurement for all four methods at resolutions "
         "$N \\in \\{" + ", ".join(str(g) for g in grid_sizes) + "\\}$. "
         "Basin fraction is stable by $N=21$ and the method ranking is invariant, "
-        "confirming that reported results do not depend on grid resolution."
+        "indicating that the reported ordering is not a discretisation artefact. "
+        "This is a resolution check, not a stochastic uncertainty estimate."
     )
     body.append(
         "\\begin{figure}[h]\n"
@@ -484,23 +489,26 @@ def write_phase_i() -> None:
     df = pd.read_csv(csv)
     hit = df[df["first_hit_step"] > 0]
     means = hit.groupby("method")["first_hit_step"].mean()
-    best_method = str(means.idxmin()) if not means.empty else "meta_mapg"
+    success_rate = df.groupby("method")["first_hit_step"].apply(lambda s: float((s > 0).mean()))
+    best_area = str(success_rate.idxmax()) if not success_rate.empty else "meta_mapg"
     body = []
     body.append(
         "For each cell in the $51\\times 51$ atlas we record the first step "
         "$t^*$ at which $\\min(p_1^t, p_2^t) \\ge \\tau$; cells where the "
         "threshold is never crossed within the budget are shown in grey. "
-        f"{METHOD_LABEL.get(best_method, best_method)} reaches the cooperative "
-        f"region fastest (mean $t^* = {float(means[best_method]):.1f}$ over "
-        "successful cells)."
+        f"{METHOD_LABEL.get(best_area, best_area)} reaches the threshold from "
+        f"the largest area ({float(success_rate[best_area])*100:.1f}\\% of cells). "
+        "Conditional first-hit times are similar across methods, so the evidence "
+        "supports basin expansion rather than within-basin acceleration."
     )
     body.append(
         "\\begin{figure}[h]\n"
         "  \\centering\n"
         "  \\includegraphics[width=0.95\\linewidth]{phase_i_fht}\n"
         "  \\caption{First-hit-time atlas ($\\log(1+t^*)$). Grey cells never "
-        "reach the cooperative threshold. Peer-aware methods hit faster and "
-        "from a larger set of initial conditions.}\n"
+        "reach the cooperative threshold. Peer-aware methods reach the threshold "
+        "from a larger set of initial conditions; conditional hit times are "
+        "not materially faster.}\n"
         "  \\label{fig:phase-i}\n"
         "\\end{figure}"
     )
@@ -534,7 +542,8 @@ def write_phase_l() -> None:
     if not valid.empty:
         best = valid.loc[valid["p_diag_star"].idxmin()]
         body.append(
-            "From Phase~C data we extract $p^*_{\\mathrm{diag}}$: the minimum "
+            "From exact diagonal cells in Phase~C we extract "
+            "$p^*_{\\mathrm{diag}}$: the minimum "
             "symmetric initial cooperation probability $p_1^0 = p_2^0$ at which "
             "stochastic basin-entry probability exceeds $0.5$. "
             f"{METHOD_LABEL.get(str(best['method']), str(best['method']))} achieves "
@@ -589,15 +598,18 @@ def write_phase_d2() -> None:
     body.append(
         "Phase~D used a shared pool of initial policies across all four arms. "
         "Here each arm draws its own independent initial policies to verify "
-        "the conclusion is not a shared-seed artefact. All three peer-aware arms "
-        "again achieve success rates well above PG."
+        "the conclusion is not a shared-seed artefact. This is a weaker, "
+        "unpaired sanity check; the paired Phase~D estimate remains the primary "
+        "ablation. All three peer-aware arms again achieve higher point estimates "
+        "than PG."
     )
     body.append(
         "\\begin{figure}[h]\n"
         "  \\centering\n"
         "  \\includegraphics[width=0.55\\linewidth]{phase_d2_audit}\n"
         "  \\caption{D2: same ablation as Phase~D with independent initial "
-        "policies per arm. The peer-aware advantage is robust to the seed choice.}\n"
+        "policies per arm. This checks that Phase~D is not an artefact of one "
+        "shared seed pool, but it has lower power than the paired design.}\n"
         "  \\label{fig:phase-d2}\n"
         "\\end{figure}"
     )
@@ -615,11 +627,226 @@ def write_phase_d2() -> None:
     rows.append("    \\bottomrule\n  \\end{tabular}")
     rows.append(
         "  \\caption{D2 audit: independent initial conditions confirm the "
-        "peer-aware advantage is not a seed artefact.}\n"
+        "peer-aware point-estimate advantage is not caused by one shared seed pool.}\n"
         "  \\label{tab:phase-d2}\n\\end{table}"
     )
     body.append("\n".join(rows))
     (TEX_DIR / "phase_d2.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_m() -> None:
+    csv = ART_DIR / "phase_m_lambda_sweep.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    pg = df[df["method"] == "standard_pg"]
+    mm = df[df["method"] == "meta_mapg"].sort_values("peer_coef")
+    best = mm.loc[mm["coop_basin_fraction"].idxmax()]
+    body = []
+    body.append(
+        "We sweep the peer coefficient $\\lambda$ while keeping the own-learning "
+        "coefficient fixed. The $\\lambda=0$ Meta-MAPG point is therefore the "
+        "own-correction-only regime, while the dashed baseline is ordinary PG. "
+        f"The best observed setting is $\\lambda={float(best['peer_coef']):.2f}$ "
+        f"with basin fraction {float(best['coop_basin_fraction'])*100:.1f}\\%."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.58\\linewidth]{phase_m_lambda_sweep}\n"
+        "  \\caption{Peer-coefficient sweep. The cooperative basin expands once "
+        "$\\lambda$ is positive and keeps increasing over the tested clipped "
+        "tabular range; this sweep identifies coefficient sensitivity, not an "
+        "asymptotically safe optimum. The $\\lambda=0$ point behaves like the "
+        "own-only Meta-PG correction.}\n"
+        "  \\label{fig:phase-m-lambda}\n"
+        "\\end{figure}"
+    )
+    rows = ["\\begin{tabular}{lcc}\n  \\toprule"]
+    rows.append("  Method & $\\lambda$ & Coop.\\ basin fraction \\\\\n  \\midrule")
+    if not pg.empty:
+        rows.append(f"  PG & -- & {float(pg['coop_basin_fraction'].iloc[0])*100:.1f}\\% \\\\")
+    for _, row in mm.iterrows():
+        rows.append(f"  Meta-MAPG & {float(row['peer_coef']):.2f} & {float(row['coop_basin_fraction'])*100:.1f}\\% \\\\")
+    rows.append("  \\bottomrule\n\\end{tabular}")
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        + "\n".join(rows)
+        + "\n  \\caption{Basin fraction as a function of peer coefficient.}\n"
+        "  \\label{tab:phase-m-lambda}\n\\end{table}"
+    )
+    (TEX_DIR / "phase_m.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_n() -> None:
+    csv = ART_DIR / "phase_n_summary_metrics.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    body = []
+    body.append(
+        "This phase consolidates the scalar metrics needed in the paper: "
+        "expansion ratio, gained/lost basin area relative to PG, and terminal "
+        "social welfare. Area metrics use the Phase~B $51\\times51$ basin masks; "
+        "welfare is recomputed on a paired lower-resolution grid because Phase~B "
+        "stored only the terminal cooperation minimum."
+    )
+    rows = ["\\begin{tabular}{lccccc}\n  \\toprule"]
+    rows.append(
+        "  Method & Basin & Expansion & Gained area & Lost area & Mean welfare \\\\\n  \\midrule"
+    )
+    for method in ["standard_pg", "meta_pg", "lola_style", "meta_mapg"]:
+        sub = df[df["method"] == method]
+        if sub.empty:
+            continue
+        r = sub.iloc[0]
+        rows.append(
+            f"  {METHOD_LABEL[method]} & {float(r['phase_b_basin_fraction'])*100:.1f}\\% "
+            f"& {float(r['expansion_vs_pg']):.2f}$\\times$ "
+            f"& {float(r['gained_area_vs_pg'])*100:.1f}\\% "
+            f"& {float(r['lost_area_vs_pg'])*100:.1f}\\% "
+            f"& {float(r['mean_terminal_welfare']):.2f} \\\\"
+        )
+    rows.append("  \\bottomrule\n\\end{tabular}")
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        + "\n".join(rows)
+        + "\n  \\caption{Scalar summary metrics. Gained/lost area is measured "
+        "relative to the PG basin mask. Welfare is $J_1+J_2$ at the terminal "
+        "policy, averaged over the welfare recomputation grid.}\n"
+        "  \\label{tab:phase-n-summary}\n\\end{table}"
+    )
+    pg_welfare = float(df[df["method"] == "standard_pg"]["mean_terminal_welfare"].iloc[0])
+    mm_welfare = float(df[df["method"] == "meta_mapg"]["mean_terminal_welfare"].iloc[0])
+    body.append(
+        f"Mean terminal social welfare increases from {pg_welfare:.2f} under PG "
+        f"to {mm_welfare:.2f} under Meta-MAPG on the paired welfare grid."
+    )
+    (TEX_DIR / "phase_n.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_o() -> None:
+    csv = ART_DIR / "phase_o_gain_masks.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    body = []
+    body.append(
+        "The basin atlas is converted into gain/loss masks relative to PG. "
+        "Blue cells are initial policies that fail under PG but succeed under "
+        "the alternative method; red cells are the reverse. This makes the "
+        "separatrix movement visible without relying on contour interpolation."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.95\\linewidth]{phase_o_gain_masks}\n"
+        "  \\caption{Basin gain/loss masks relative to PG. Peer-only and "
+        "Meta-MAPG add a large contiguous region below the PG frontier, while "
+        "Meta-PG adds almost nothing.}\n"
+        "  \\label{fig:phase-o-gain}\n"
+        "\\end{figure}"
+    )
+    rows = ["\\begin{tabular}{lccc}\n  \\toprule"]
+    rows.append("  Method & Gained area & Lost area & Net area \\\\\n  \\midrule")
+    for method in ["meta_pg", "lola_style", "meta_mapg"]:
+        sub = df[df["method"] == method]
+        if sub.empty:
+            continue
+        r = sub.iloc[0]
+        rows.append(
+            f"  {METHOD_LABEL[method]} & {float(r['gained_area_vs_pg'])*100:.1f}\\% "
+            f"& {float(r['lost_area_vs_pg'])*100:.1f}\\% "
+            f"& {float(r['net_area_vs_pg'])*100:.1f}\\% \\\\"
+        )
+    rows.append("  \\bottomrule\n\\end{tabular}")
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        + "\n".join(rows)
+        + "\n  \\caption{Area changes relative to PG on the Phase~B grid.}\n"
+        "  \\label{tab:phase-o-gain}\n\\end{table}"
+    )
+    (TEX_DIR / "phase_o.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_p() -> None:
+    csv = ART_DIR / "phase_p_projection.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    central = df[(df["p1"].between(0.2, 0.8)) & (df["p2"].between(0.2, 0.8))]
+    mean_proj = float(central["toward_cc_projection"].mean())
+    frac_pos = float((central["toward_cc_projection"] > 0).mean())
+    body = []
+    body.append(
+        "Phase~A2 showed that the raw angle field is rotational. Here we use "
+        "the more relevant scalar: the Meta-MAPG-minus-PG update projected onto "
+        "the direction from the current policy to $(C,C)$. Positive values mean "
+        "the peer correction directly helps basin entry. In the central mixed "
+        f"region, the mean projection is {mean_proj:.4f} and is positive in "
+        f"{frac_pos*100:.0f}\\% of cells."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.95\\linewidth]{phase_p_projection}\n"
+        "  \\caption{Peer-correction projection toward $(C,C)$. The left panel "
+        "is the scalar projection; the right panel colours the difference "
+        "quiver by the same projection. This is the mechanism figure used for "
+        "the basin-entry claim.}\n"
+        "  \\label{fig:phase-p-projection}\n"
+        "\\end{figure}"
+    )
+    (TEX_DIR / "phase_p.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_q() -> None:
+    csv = ART_DIR / "phase_q_tsweep_bootstrap.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    body = []
+    body.append(
+        "We rerun the $T$-sweep with all four methods and compute confidence "
+        "intervals by bootstrapping over initial-condition cells. Each bootstrap "
+        "sample resamples cells, not individual rollouts, so the interval respects "
+        "spatial correlation in the basin map. This supersedes the aggregate "
+        "Wilson intervals in Phase~G."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.68\\linewidth]{phase_q_tsweep_bootstrap}\n"
+        "  \\caption{Cell-bootstrap $T$-sweep with all four methods. Meta-PG "
+        "tracks PG, while Peer-only tracks Meta-MAPG, isolating the peer term "
+        "as the source of basin expansion.}\n"
+        "  \\label{fig:phase-q-bootstrap}\n"
+        "\\end{figure}"
+    )
+    methods = [m for m in ["standard_pg", "meta_pg", "lola_style", "meta_mapg"] if m in set(df["method"])]
+    rows = ["\\begin{tabular}{l" + "c" * len(methods) + "}\n  \\toprule"]
+    rows.append("  $T$ & " + " & ".join(METHOD_LABEL[m] for m in methods) + " \\\\\n  \\midrule")
+    for T, grp in df.groupby("T"):
+        parts = []
+        for method in methods:
+            r = grp[grp["method"] == method]
+            if r.empty:
+                parts.append("--")
+                continue
+            row = r.iloc[0]
+            parts.append(
+                f"{float(row['coop_basin_fraction'])*100:.1f} "
+                f"[{float(row['ci_lo'])*100:.1f},{float(row['ci_hi'])*100:.1f}]\\%"
+            )
+        rows.append(f"  {T:.2f} & " + " & ".join(parts) + " \\\\")
+    rows.append("  \\bottomrule\n\\end{tabular}")
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        + "\n".join(rows)
+        + "\n  \\caption{Cell-bootstrap basin fraction intervals by temptation $T$.}\n"
+        "  \\label{tab:phase-q-bootstrap}\n\\end{table}"
+    )
+    (TEX_DIR / "phase_q.tex").write_text("\n\n".join(body) + "\n")
 
 
 def main() -> None:
@@ -644,6 +871,11 @@ def main() -> None:
         "i": write_phase_i,
         "l": write_phase_l,
         "d2": write_phase_d2,
+        "m": write_phase_m,
+        "n": write_phase_n,
+        "o": write_phase_o,
+        "p": write_phase_p,
+        "q": write_phase_q,
     }
     for phase in args.phases:
         fn = fns.get(phase.lower())

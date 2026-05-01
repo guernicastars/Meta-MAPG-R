@@ -1,0 +1,19 @@
+This phase consolidates the scalar metrics needed in the paper: expansion ratio, gained/lost basin area relative to PG, and terminal social welfare. Area metrics use the Phase~B $51\times51$ basin masks; welfare is recomputed on a paired lower-resolution grid because Phase~B stored only the terminal cooperation minimum.
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lccccc}
+  \toprule
+  Method & Basin & Expansion & Gained area & Lost area & Mean welfare \\
+  \midrule
+  PG & 25.9\% & 1.00$\times$ & 0.0\% & 0.0\% & 4.99 \\
+  Meta-PG & 26.4\% & 1.02$\times$ & 2.0\% & 1.6\% & 4.95 \\
+  Peer only & 42.9\% & 1.66$\times$ & 17.0\% & 0.0\% & 5.62 \\
+  Meta-MAPG & 42.3\% & 1.63$\times$ & 16.5\% & 0.0\% & 5.60 \\
+  \bottomrule
+\end{tabular}
+  \caption{Scalar summary metrics. Gained/lost area is measured relative to the PG basin mask. Welfare is $J_1+J_2$ at the terminal policy, averaged over the welfare recomputation grid.}
+  \label{tab:phase-n-summary}
+\end{table}
+
+Mean terminal social welfare increases from 4.99 under PG to 5.60 under Meta-MAPG on the paired welfare grid.
