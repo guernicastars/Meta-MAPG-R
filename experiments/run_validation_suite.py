@@ -659,11 +659,425 @@ def run_phase_f(cfg: Config, thresholds: list[float]) -> Path:
 
 
 # -------------------------------------------------------------------------
+# Shared helpers for new phases
+# -------------------------------------------------------------------------
+def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float, float]:
+    if n <= 0:
+        return float("nan"), float("nan"), float("nan")
+    p = k / n
+    denom = 1.0 + z * z / n
+    centre = (p + z * z / (2.0 * n)) / denom
+    half = z * np.sqrt((p * (1.0 - p) + z * z / (4.0 * n)) / n) / denom
+    return p, max(0.0, centre - half), min(1.0, centre + half)
+
+
+# -------------------------------------------------------------------------
+# Phase A2 : angle-tilt heatmap + Meta-MAPG minus PG difference quiver
+# -------------------------------------------------------------------------
+def run_phase_a2(cfg: Config) -> Path:
+    csv_a = cfg.outdir / "phase_a_arrows.csv"
+    if not csv_a.exists():
+        print("phase_a_arrows.csv missing; run Phase A first")
+        return csv_a
+    df = pd.read_csv(csv_a)
+    sub_pg = df[df["method"] == "standard_pg"].sort_values(["p1", "p2"]).reset_index(drop=True)
+    sub_mm = df[df["method"] == "meta_mapg"].sort_values(["p1", "p2"]).reset_index(drop=True)
+    angle_pg = np.arctan2(sub_pg["dp2"].to_numpy(), sub_pg["dp1"].to_numpy())
+    angle_mm = np.arctan2(sub_mm["dp2"].to_numpy(), sub_mm["dp1"].to_numpy())
+    angle_diff = ((angle_mm - angle_pg) + np.pi) % (2 * np.pi) - np.pi
+    out_df = pd.DataFrame({
+        "phase": "A2",
+        "p1": sub_pg["p1"].to_numpy(),
+        "p2": sub_pg["p2"].to_numpy(),
+        "angle_diff_rad": angle_diff,
+        "dp1_diff": sub_mm["dp1"].to_numpy() - sub_pg["dp1"].to_numpy(),
+        "dp2_diff": sub_mm["dp2"].to_numpy() - sub_pg["dp2"].to_numpy(),
+    })
+    out = cfg.outdir / "phase_a2_angle_diff.csv"
+    out_df.to_csv(out, index=False)
+    plot_phase_a2(out_df, cfg)
+    return out
+
+
+def plot_phase_a2(df: pd.DataFrame, cfg: Config) -> None:
+    p1 = df["p1"].to_numpy()
+    p2 = df["p2"].to_numpy()
+    n = int(round(np.sqrt(len(p1))))
+    grid_vals = np.sort(np.unique(p1))
+    angle_diff = df["angle_diff_rad"].to_numpy().reshape(n, n)
+    dp1_diff = df["dp1_diff"].to_numpy()
+    dp2_diff = df["dp2_diff"].to_numpy()
+    extent = (grid_vals[0], grid_vals[-1], grid_vals[0], grid_vals[-1])
+
+    fig, axes = plt.subplots(1, 2, figsize=(8.0, 3.8))
+
+    ax = axes[0]
+    im = ax.imshow(angle_diff.T, origin="lower", extent=extent, cmap="RdBu",
+                   vmin=-np.pi, vmax=np.pi, aspect="equal", interpolation="bilinear")
+    plt.colorbar(im, ax=ax, label="angle tilt (rad)")
+    ax.plot([0, 1], [1, 0], color="grey", linewidth=0.6, linestyle=":")
+    ax.set_xlabel(r"$p_1^0$")
+    ax.set_ylabel(r"$p_2^0$")
+    ax.set_title("Meta-MAPG vs PG: angle tilt", fontsize=10)
+
+    ax = axes[1]
+    norm_d = max(np.sqrt(dp1_diff**2 + dp2_diff**2).max(), 1e-8)
+    scale = 0.04 / norm_d
+    ax.quiver(p1, p2, dp1_diff * scale, dp2_diff * scale,
+              angles="xy", scale_units="xy", scale=1.0, width=0.005, color="#b279a2", alpha=0.8)
+    ax.scatter([1.0], [1.0], marker="*", s=110, color="#2fbf71", zorder=5)
+    ax.scatter([0.0], [0.0], marker="X", s=70, color="#e45756", zorder=5)
+    ax.plot([0, 1], [1, 0], color="grey", linewidth=0.6, linestyle=":")
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_aspect("equal")
+    ax.set_xlabel(r"$p_1^0$")
+    ax.set_ylabel(r"$p_2^0$")
+    ax.set_title("Meta-MAPG $-$ PG (difference quiver)", fontsize=10)
+    ax.grid(alpha=0.2)
+
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_a2_angle_diff.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase G : multi-seed T-sweep with Wilson CIs
+# -------------------------------------------------------------------------
+def run_phase_g(
+    cfg: Config,
+    temptations: list[float],
+    methods: list[str],
+    grid_size: int,
+    steps: int,
+    batch_size: int,
+    seeds_per_cell: int,
+) -> Path:
+    grid = np.linspace(0.05, 0.95, grid_size)
+    rows: list[dict] = []
+    for ti, T in enumerate(temptations):
+        game = coordination_game(T)
+        for mi, method in enumerate(methods):
+            k, n = 0, 0
+            for i, p1 in enumerate(grid):
+                for j, p2 in enumerate(grid):
+                    init_theta = np.zeros((2, game.n_states), dtype=float)
+                    init_theta[0, 0] = logit(float(p1))
+                    init_theta[1, 0] = logit(float(p2))
+                    for s in range(seeds_per_cell):
+                        seed = cfg.seed_base + 600_000 + 10_000 * ti + 50_000 * mi + 503 * i + 71 * j + s
+                        theta, _ = run_rollout(
+                            game=game, method=method, seed=seed, steps=steps, batch_size=batch_size,
+                            lr=cfg.lr, inner_lr=cfg.inner_lr, peer_coef=cfg.peer_coef, own_coef=cfg.own_coef,
+                            init_theta=init_theta, lr_power=cfg.lr_power, lambda_power=0.0, log_every=steps + 1,
+                        )
+                        k += int(is_success(theta, game, threshold=cfg.success_threshold))
+                        n += 1
+            p_hat, lo, hi = wilson_ci(k, n)
+            rows.append({
+                "phase": "G", "T": float(T), "method": method,
+                "coop_basin_fraction": p_hat, "ci_lo": lo, "ci_hi": hi,
+                "n_success": k, "n_trials": n,
+            })
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_g_tsweep_multiseed.csv"
+    df.to_csv(out, index=False)
+    plot_phase_g(df, cfg)
+    return out
+
+
+def plot_phase_g(df: pd.DataFrame, cfg: Config) -> None:
+    fig, ax = plt.subplots(figsize=(5.0, 3.4))
+    for method in df["method"].unique():
+        sub = df[df["method"] == method].sort_values("T")
+        T_vals = sub["T"].to_numpy()
+        frac = sub["coop_basin_fraction"].to_numpy()
+        lo = sub["ci_lo"].to_numpy()
+        hi = sub["ci_hi"].to_numpy()
+        color = METHOD_COLORS.get(method, "#333333")
+        ax.plot(T_vals, frac, marker="o", linewidth=1.8, color=color, label=METHOD_LABELS.get(method, method))
+        ax.fill_between(T_vals, lo, hi, alpha=0.2, color=color)
+    ax.set_xlabel("Temptation T")
+    ax.set_ylabel("Cooperative basin fraction")
+    ax.set_ylim(0, 1.02)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_g_tsweep_multiseed.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase H : resolution robustness
+# -------------------------------------------------------------------------
+def run_phase_h(cfg: Config, grid_sizes: list[int], steps: int, batch_size: int) -> Path:
+    game = stag_hunt()
+    rows: list[dict] = []
+    for gi, gs in enumerate(grid_sizes):
+        grid = np.linspace(0.05, 0.95, gs)
+        for mi, method in enumerate(METHODS_FULL):
+            success, _ = run_basin_grid(
+                game=game, method=method, grid=grid, steps=steps, batch_size=batch_size,
+                cfg=cfg, seed_offset=cfg.seed_base + 500_000 + 10_000 * gi + 50_000 * mi,
+            )
+            rows.append({
+                "phase": "H", "grid_size": int(gs), "method": method,
+                "coop_basin_fraction": float(np.mean(success)), "n_cells": int(gs * gs),
+            })
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_h_resolution.csv"
+    df.to_csv(out, index=False)
+    plot_phase_h(df, cfg)
+    return out
+
+
+def plot_phase_h(df: pd.DataFrame, cfg: Config) -> None:
+    fig, ax = plt.subplots(figsize=(4.8, 3.2))
+    for method in METHODS_FULL:
+        sub = df[df["method"] == method].sort_values("grid_size")
+        ax.plot(sub["grid_size"], sub["coop_basin_fraction"], marker="o", linewidth=1.8,
+                color=METHOD_COLORS[method], label=METHOD_LABELS[method])
+    ax.set_xlabel("Grid resolution $N$ ($N\\times N$)")
+    ax.set_ylabel("Cooperative basin fraction")
+    ax.set_ylim(0, 1.02)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_h_resolution.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase I : first-hit-time atlas
+# -------------------------------------------------------------------------
+def first_hit_step(
+    game: Game, method: str, init_theta: np.ndarray,
+    total_steps: int, batch_size: int, cfg: Config, seed: int,
+) -> int:
+    theta = init_theta.copy()
+    rng = np.random.default_rng(seed)
+    for step in range(total_steps):
+        comps = estimate_components(theta, game, batch_size, rng, cfg.inner_lr)
+        lr_step = cfg.lr / ((step + 10.0) ** cfg.lr_power)
+        update = update_from_components(comps, method, cfg.peer_coef, cfg.own_coef)
+        theta = np.clip(theta + lr_step * update, -8.0, 8.0)
+        if is_success(theta, game, threshold=cfg.success_threshold):
+            return step + 1
+    return -1
+
+
+def run_phase_i(cfg: Config, grid_size: int, total_steps: int, batch_size: int) -> Path:
+    game = stag_hunt()
+    grid = np.linspace(0.05, 0.95, grid_size)
+    rows: list[dict] = []
+    npy_data: dict[str, np.ndarray] = {}
+    for mi, method in enumerate(METHODS_FULL):
+        hit_grid = np.full((grid_size, grid_size), -1, dtype=int)
+        for i, p1 in enumerate(grid):
+            for j, p2 in enumerate(grid):
+                init_theta = np.zeros((2, game.n_states), dtype=float)
+                init_theta[0, 0] = logit(float(p1))
+                init_theta[1, 0] = logit(float(p2))
+                seed = cfg.seed_base + 800_000 + 50_000 * mi + 101 * i + 13 * j
+                t_hit = first_hit_step(game, method, init_theta, total_steps, batch_size, cfg, seed)
+                hit_grid[i, j] = t_hit
+                rows.append({
+                    "phase": "I", "method": method,
+                    "init_p1": float(p1), "init_p2": float(p2), "first_hit_step": int(t_hit),
+                })
+        npy_data[method] = hit_grid
+        np.save(cfg.outdir / f"phase_i_fht_{method}.npy", hit_grid)
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_i_fht.csv"
+    df.to_csv(out, index=False)
+    np.save(cfg.outdir / "phase_i_grid.npy", grid)
+    plot_phase_i(npy_data, grid, total_steps, cfg)
+    return out
+
+
+def plot_phase_i(npy_data: dict[str, np.ndarray], grid: np.ndarray, total_steps: int, cfg: Config) -> None:
+    cmap = plt.cm.viridis.copy()
+    cmap.set_bad(color="lightgrey")
+    fig, axes = plt.subplots(2, 2, figsize=(7.0, 6.6))
+    for ax, method in zip(axes.flat, METHODS_FULL):
+        hit = npy_data[method].astype(float)
+        hit[hit < 0] = float("nan")
+        log_hit = np.log1p(hit)
+        im = ax.imshow(log_hit.T, origin="lower",
+                       extent=(grid[0], grid[-1], grid[0], grid[-1]),
+                       cmap=cmap, aspect="equal", interpolation="nearest")
+        plt.colorbar(im, ax=ax, label="log(1+step)")
+        valid = hit[~np.isnan(hit)]
+        mean_t = float(np.mean(valid)) if valid.size > 0 else float("nan")
+        ax.set_title(f"{METHOD_LABELS[method]} : mean $t^*$={mean_t:.1f}", fontsize=10)
+        ax.set_xlabel(r"$p_1^0$")
+        ax.set_ylabel(r"$p_2^0$")
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_i_fht.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase L : diagonal threshold from Phase C data (no new compute)
+# -------------------------------------------------------------------------
+def run_phase_l(cfg: Config) -> Path:
+    csv = cfg.outdir / "phase_c_stochastic_basin.csv"
+    if not csv.exists():
+        print("phase_c_stochastic_basin.csv missing; run Phase C first")
+        return csv
+    df = pd.read_csv(csv)
+    diag = df[np.abs(df["init_p1"] - df["init_p2"]) < 0.07].copy()
+    rows: list[dict] = []
+    for method in METHODS_FULL:
+        sub = diag[diag["method"] == method].sort_values("init_p1")
+        p_vals = sub["init_p1"].to_numpy()
+        s_vals = sub["p_success"].to_numpy()
+        crosses = np.where(np.diff(np.sign(s_vals - 0.5)))[0]
+        if len(crosses) > 0:
+            idx = crosses[0]
+            x0, x1, y0, y1 = p_vals[idx], p_vals[idx + 1], s_vals[idx], s_vals[idx + 1]
+            p_star = x0 + (0.5 - y0) * (x1 - x0) / (y1 - y0) if abs(y1 - y0) > 1e-8 else float(x0)
+        else:
+            p_star = float("nan")
+        rows.append({"phase": "L", "method": method, "p_diag_star": p_star})
+    df_out = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_l_diagonal.csv"
+    df_out.to_csv(out, index=False)
+    plot_phase_l(diag, df_out, cfg)
+    return out
+
+
+def plot_phase_l(diag: pd.DataFrame, summary: pd.DataFrame, cfg: Config) -> None:
+    fig, ax = plt.subplots(figsize=(4.8, 3.2))
+    for method in METHODS_FULL:
+        sub = diag[diag["method"] == method].sort_values("init_p1")
+        ax.plot(sub["init_p1"], sub["p_success"], marker="o", linewidth=1.8, markersize=4,
+                color=METHOD_COLORS[method], label=METHOD_LABELS[method])
+        row = summary[summary["method"] == method]
+        if not row.empty:
+            val = float(row["p_diag_star"].iloc[0])
+            if not np.isnan(val):
+                ax.axvline(val, color=METHOD_COLORS[method], linewidth=0.8, linestyle="--")
+    ax.axhline(0.5, color="grey", linewidth=0.6, linestyle=":")
+    ax.set_xlabel(r"$p_0$ (init coop on diagonal $p_1^0=p_2^0$)")
+    ax.set_ylabel(r"$\hat P(\mathrm{coop})$")
+    ax.set_ylim(0, 1.02)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_l_diagonal.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase D2 : independent-seed ablation audit
+# -------------------------------------------------------------------------
+def run_phase_d2(
+    cfg: Config,
+    n_seeds: int,
+    n0: int,
+    total_steps: int,
+    scale: int,
+    q: float,
+    batch_size: int,
+) -> Path:
+    game = stag_hunt()
+    arms = [
+        ("pg", "constant_pg"),
+        ("meta_mapg_constant", "constant"),
+        ("meta_mapg_two_phase", "two_phase"),
+        ("warm_metamapg_pure_pg", "warm_then_pg"),
+    ]
+    arm_seed_offsets = {"pg": 0, "meta_mapg_constant": 1, "meta_mapg_two_phase": 2, "warm_metamapg_pure_pg": 3}
+    rows: list[dict] = []
+    for label, schedule in arms:
+        rng_init = np.random.default_rng(cfg.seed_base + 980_000 + arm_seed_offsets[label])
+        init_thetas = [rng_init.normal(0.0, 1.35, size=(2, game.n_states)) for _ in range(n_seeds)]
+        for seed_idx in range(n_seeds):
+            theta = init_thetas[seed_idx].copy()
+            rng = np.random.default_rng(cfg.seed_base + 981_000 + 71 * seed_idx + arm_seed_offsets[label])
+            coop_trace: list[float] = []
+            for step in range(total_steps):
+                comps = estimate_components(theta, game, batch_size, rng, cfg.inner_lr)
+                lr_step = cfg.lr / ((step + 10.0) ** cfg.lr_power)
+                if schedule == "constant_pg":
+                    method, lam_step = "standard_pg", 0.0
+                elif schedule == "constant":
+                    method, lam_step = "meta_mapg", cfg.peer_coef
+                elif schedule == "two_phase":
+                    method = "meta_mapg"
+                    lam_step = _two_phase_lambda(step, n0, cfg.peer_coef, scale, q)
+                elif schedule == "warm_then_pg":
+                    method = "meta_mapg" if step < n0 else "standard_pg"
+                    lam_step = cfg.peer_coef if step < n0 else 0.0
+                else:
+                    raise ValueError(schedule)
+                update = update_from_components(comps, method, lam_step, cfg.own_coef)
+                theta = np.clip(theta + lr_step * update, -8.0, 8.0)
+                coop_trace.append(float(np.min(cooperation_probs(theta, game))))
+            arr = np.array(coop_trace)
+            second_half = arr[total_steps // 2:]
+            rows.append({
+                "phase": "D2", "label": label, "schedule": schedule, "seed": seed_idx,
+                "final_coop_min": float(arr[-1]),
+                "second_half_coop_mean": float(np.mean(second_half)),
+                "success": int(arr[-1] >= cfg.success_threshold),
+            })
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_d2_audit.csv"
+    df.to_csv(out, index=False)
+    plot_phase_d2(df, cfg)
+    return out
+
+
+def plot_phase_d2(df: pd.DataFrame, cfg: Config) -> None:
+    arm_order = ["pg", "meta_mapg_constant", "meta_mapg_two_phase", "warm_metamapg_pure_pg"]
+    pretty = {
+        "pg": "PG",
+        "meta_mapg_constant": "Meta-MAPG (const $\\lambda$)",
+        "meta_mapg_two_phase": "Meta-MAPG (two-phase)",
+        "warm_metamapg_pure_pg": "warm-MM $\\to$ PG",
+    }
+    colors = {
+        "pg": "#4c78a8",
+        "meta_mapg_constant": "#b279a2",
+        "meta_mapg_two_phase": "#2fbf71",
+        "warm_metamapg_pure_pg": "#e45756",
+    }
+    fig, ax = plt.subplots(figsize=(5.0, 3.4))
+    for lbl in arm_order:
+        sub = df[df["label"] == lbl]
+        rate = float(sub["success"].mean())
+        sem = float(sub["success"].std(ddof=1) / np.sqrt(len(sub))) if len(sub) > 1 else 0.0
+        ax.bar(pretty[lbl], rate, yerr=1.96 * sem, color=colors[lbl], alpha=0.85)
+    ax.set_ylim(0.0, 1.02)
+    ax.set_ylabel("Cooperative success rate")
+    ax.tick_params(axis="x", labelrotation=18, labelsize=8)
+    ax.grid(axis="y", alpha=0.25)
+    ax.set_title("D2: independent init per arm", fontsize=10)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_d2_audit.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
 # Driver
 # -------------------------------------------------------------------------
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
-    p.add_argument("--phase", type=str, default="all", choices=["A", "B", "C", "D", "E", "F", "all"])
+    p.add_argument("--phase", type=str, default="all", choices=["A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "A2", "D2", "all"])
     p.add_argument("--outdir", type=Path, default=Path("artifacts/validation"))
     p.add_argument("--fig-outdir", type=Path, default=Path("figures/validation"))
     # Sizing
@@ -698,12 +1112,29 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--phase-e-grid", type=int, default=21)
     p.add_argument("--phase-e-steps", type=int, default=140)
     p.add_argument("--phase-e-batch", type=int, default=192)
-    p.add_argument(
-        "--phase-f-thresholds",
-        type=float,
-        nargs="+",
-        default=[0.75, 0.82, 0.90],
-    )
+    p.add_argument("--phase-f-thresholds", type=float, nargs="+", default=[0.75, 0.82, 0.90])
+    # Phase G
+    p.add_argument("--phase-g-seeds", type=int, default=5)
+    p.add_argument("--phase-g-grid", type=int, default=21)
+    p.add_argument("--phase-g-steps", type=int, default=140)
+    p.add_argument("--phase-g-batch", type=int, default=192)
+    p.add_argument("--phase-g-temptations", type=float, nargs="+", default=[2.2, 2.5, 3.0, 3.5, 3.8])
+    p.add_argument("--phase-g-methods", type=str, nargs="+", default=["standard_pg", "lola_style", "meta_mapg"])
+    # Phase H
+    p.add_argument("--phase-h-grids", type=int, nargs="+", default=[11, 21, 51])
+    p.add_argument("--phase-h-steps", type=int, default=140)
+    p.add_argument("--phase-h-batch", type=int, default=192)
+    # Phase I
+    p.add_argument("--phase-i-grid", type=int, default=51)
+    p.add_argument("--phase-i-steps", type=int, default=140)
+    p.add_argument("--phase-i-batch", type=int, default=192)
+    # Phase D2
+    p.add_argument("--phase-d2-seeds", type=int, default=80)
+    p.add_argument("--phase-d2-n0", type=int, default=100)
+    p.add_argument("--phase-d2-total", type=int, default=260)
+    p.add_argument("--phase-d2-scale", type=int, default=30)
+    p.add_argument("--phase-d2-q", type=float, default=0.7)
+    p.add_argument("--phase-d2-batch", type=int, default=256)
     return p.parse_args()
 
 
@@ -721,7 +1152,7 @@ def main() -> None:
         with log_path.open("a") as fh:
             fh.write(json.dumps(event) + "\n")
 
-    phases = ["A", "B", "C", "D", "E", "F"] if args.phase == "all" else [args.phase]
+    phases = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "A2", "D2"] if args.phase == "all" else [args.phase]
     log({"event": "start", "phases": phases, "args": vars(args) | {"outdir": str(args.outdir), "fig_outdir": str(args.fig_outdir)}})
 
     if "A" in phases:
@@ -768,6 +1199,42 @@ def main() -> None:
         log({"event": "phase_start", "phase": "F"})
         out = run_phase_f(cfg, args.phase_f_thresholds)
         log({"event": "phase_done", "phase": "F", "csv": str(out)})
+
+    if "A2" in phases:
+        log({"event": "phase_start", "phase": "A2"})
+        out = run_phase_a2(cfg)
+        log({"event": "phase_done", "phase": "A2", "csv": str(out)})
+
+    if "G" in phases:
+        log({"event": "phase_start", "phase": "G"})
+        out = run_phase_g(
+            cfg, args.phase_g_temptations, args.phase_g_methods,
+            args.phase_g_grid, args.phase_g_steps, args.phase_g_batch, args.phase_g_seeds,
+        )
+        log({"event": "phase_done", "phase": "G", "csv": str(out)})
+
+    if "H" in phases:
+        log({"event": "phase_start", "phase": "H"})
+        out = run_phase_h(cfg, args.phase_h_grids, args.phase_h_steps, args.phase_h_batch)
+        log({"event": "phase_done", "phase": "H", "csv": str(out)})
+
+    if "I" in phases:
+        log({"event": "phase_start", "phase": "I"})
+        out = run_phase_i(cfg, args.phase_i_grid, args.phase_i_steps, args.phase_i_batch)
+        log({"event": "phase_done", "phase": "I", "csv": str(out)})
+
+    if "L" in phases:
+        log({"event": "phase_start", "phase": "L"})
+        out = run_phase_l(cfg)
+        log({"event": "phase_done", "phase": "L", "csv": str(out)})
+
+    if "D2" in phases:
+        log({"event": "phase_start", "phase": "D2"})
+        out = run_phase_d2(
+            cfg, args.phase_d2_seeds, args.phase_d2_n0, args.phase_d2_total,
+            args.phase_d2_scale, args.phase_d2_q, args.phase_d2_batch,
+        )
+        log({"event": "phase_done", "phase": "D2", "csv": str(out)})
 
     log({"event": "end"})
 

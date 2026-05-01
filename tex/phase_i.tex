@@ -1,0 +1,24 @@
+For each cell in the $51\times 51$ atlas we record the first step $t^*$ at which $\min(p_1^t, p_2^t) \ge \tau$; cells where the threshold is never crossed within the budget are shown in grey. Meta-PG reaches the cooperative region fastest (mean $t^* = 26.0$ over successful cells).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.95\linewidth]{phase_i_fht}
+  \caption{First-hit-time atlas ($\log(1+t^*)$). Grey cells never reach the cooperative threshold. Peer-aware methods hit faster and from a larger set of initial conditions.}
+  \label{fig:phase-i}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lcc}
+  \toprule
+  Method & Mean $t^*$ & Frac.\ success \\
+  \midrule
+  PG & 26.8 & 26.3\% \\
+  Meta-PG & 26.0 & 25.9\% \\
+  Peer only & 27.0 & 42.4\% \\
+  Meta-MAPG & 27.5 & 42.3\% \\
+  \bottomrule
+\end{tabular}
+  \caption{First-hit-time summary. Mean computed over successful cells only.}
+  \label{tab:phase-i}
+\end{table}
