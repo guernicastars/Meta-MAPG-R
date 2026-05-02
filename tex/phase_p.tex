@@ -1,8 +1,8 @@
-Phase~A2 showed that the raw angle field is rotational. Here we use the more relevant scalar: the Meta-MAPG-minus-PG update projected onto the direction from the current policy to $(C,C)$. Positive values mean the peer correction directly helps basin entry. In the central mixed region, the mean projection is 0.0213 and is positive in 100\% of cells.
+Phase~A2 showed that the raw angle field is rotational. Here we use the more relevant scalar: the full Meta-MAPG-minus-PG update (own~+~peer components) projected onto the direction from the current policy to $(C,C)$. Positive values mean the combined correction directly helps basin entry. Since Phase~L established that the own component contributes negligibly, this is effectively a peer-correction projection with minor own-learning noise. In the central mixed region, the mean projection is 0.0213 and is positive in 94\% of cells (the 13 negative cells all have $|$projection$| < 0.003$, attributable to stochastic estimation noise and the small own component).
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.95\linewidth]{phase_p_projection}
-  \caption{Peer-correction projection toward $(C,C)$. The left panel is the scalar projection; the right panel colours the difference quiver by the same projection. This is the mechanism figure used for the basin-entry claim.}
+  \caption{Total Meta-MAPG-minus-PG correction projected toward $(C,C)$. Left: the scalar projection $(\Delta p^{MM} - \Delta p^{PG}) \cdot \hat{d}_{CC}$, which includes both own and peer components. Right: the difference quiver coloured by the same projection. Note that this is a \emph{directional} quantity (not learning-rate-weighted displacement); see Phase~R for the isolated peer component.}
   \label{fig:phase-p-projection}
 \end{figure}

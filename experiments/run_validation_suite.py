@@ -1455,7 +1455,7 @@ def plot_phase_p(df: pd.DataFrame, cfg: Config) -> None:
     ax.scatter([0.0], [0.0], marker="X", s=55, color="black", zorder=5)
     ax.set_xlabel(r"$p_1^0$")
     ax.set_ylabel(r"$p_2^0$")
-    ax.set_title("Projection toward $(C,C)$", fontsize=10)
+    ax.set_title("Total correction toward $(C,C)$", fontsize=10)
 
     ax = axes[1]
     norm_d = max(np.sqrt(diff1**2 + diff2**2).max(), 1e-8)
@@ -1484,7 +1484,7 @@ def plot_phase_p(df: pd.DataFrame, cfg: Config) -> None:
     ax.set_aspect("equal")
     ax.set_xlabel(r"$p_1^0$")
     ax.set_ylabel(r"$p_2^0$")
-    ax.set_title("Peer-correction difference field", fontsize=10)
+    ax.set_title("MM$-$PG difference field", fontsize=10)
     ax.grid(alpha=0.2)
 
     fig.tight_layout()
@@ -1687,29 +1687,34 @@ def plot_phase_r(df: pd.DataFrame, cfg: Config) -> None:
     grid = np.sort(df["init_p1"].unique())
     n = grid.size
     proj = df.sort_values(["init_p1", "init_p2"])["peer_projection_to_cc"].to_numpy().reshape(n, n)
-    vmax = max(abs(float(np.nanmin(proj))), abs(float(np.nanmax(proj))), 1e-12)
     fig, axes = plt.subplots(1, 3, figsize=(10.2, 3.2))
     ax = axes[0]
     im = ax.imshow(
         proj.T,
         origin="lower",
         extent=(grid[0], grid[-1], grid[0], grid[-1]),
-        cmap="RdYlGn",
-        norm=TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax),
+        cmap="YlGn",
+        vmin=0.0,
         aspect="equal",
         interpolation="bilinear",
     )
-    plt.colorbar(im, ax=ax, label="peer projection")
+    plt.colorbar(im, ax=ax, label="peer projection magnitude")
     ax.set_title("Peer term toward $(C,C)$", fontsize=10)
     ax.set_xlabel(r"$p_1^0$")
     ax.set_ylabel(r"$p_2^0$")
 
     ax = axes[1]
-    order = ["shared_failure", "gained", "shared_success", "lost"]
+    order = ["shared_failure", "gained", "shared_success"]
+    labels = ["fail", "gained", "shared"]
     data = [df[df["gain_group"] == group]["peer_projection_to_cc"].to_numpy() for group in order]
-    ax.boxplot(data, tick_labels=["fail", "gained", "shared", "lost"], showfliers=False)
-    ax.axhline(0.0, color="grey", linewidth=0.8, linestyle=":")
-    ax.set_ylabel("Peer projection")
+    counts = [len(d) for d in data]
+    n_lost = int((df["gain_group"] == "lost").sum())
+    bp = ax.boxplot(data, tick_labels=labels, showfliers=False)
+    for i, cnt in enumerate(counts):
+        ax.text(i + 1, ax.get_ylim()[1] * 0.95, f"n={cnt}", ha="center", fontsize=7, color="#555555")
+    if n_lost > 0:
+        ax.text(0.98, 0.02, f"lost: n={n_lost} (omitted)", transform=ax.transAxes, ha="right", va="bottom", fontsize=6.5, color="#999999")
+    ax.set_ylabel("Peer projection magnitude")
     ax.set_title("Projection by basin outcome", fontsize=10)
     ax.tick_params(axis="x", labelrotation=15)
 

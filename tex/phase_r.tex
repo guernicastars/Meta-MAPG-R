@@ -1,9 +1,11 @@
-This phase tests the local alignment condition directly. For each Phase~B grid cell we compute the exact one-step peer correction and project its probability-space update onto the direction from the initial policy to $(C,C)$. We then ask whether this scalar predicts cells that fail under PG but succeed under Meta-MAPG.
+This phase tests the local alignment condition directly. For each Phase~B grid cell we compute the exact one-step peer correction and project its probability-space displacement onto the direction from the initial policy to $(C,C)$. We then ask whether the \emph{magnitude} of this scalar predicts cells that fail under PG but succeed under Meta-MAPG.
+
+A structural property of Stag Hunt (and coordination games generally) is that the peer correction always has non-negative projection toward the cooperative equilibrium: the cross-gradient term in a game with aligned payoffs cannot push \emph{away} from $(C,C)$. The test is therefore whether \emph{larger} peer projection predicts gain, not whether sign discriminates. Phase~V and~Z test sign discrimination across different payoff geometries.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.95\linewidth]{phase_r_alignment_regression}
-  \caption{Alignment-to-entry regression. Left: exact peer-correction projection toward $(C,C)$. Middle: projection distribution by basin outcome. Right: binned probability that Meta-MAPG succeeds among cells where PG fails.}
+  \caption{Alignment-to-entry regression. Left: exact peer-correction projection magnitude toward $(C,C)$ (sequential colourmap since all values are non-negative in Stag Hunt). Middle: projection distribution by basin outcome; counts annotated, lost category ($n=1$) omitted. Right: binned probability that Meta-MAPG succeeds among cells where PG fails; numbers above dots are bin sizes.}
   \label{fig:phase-r-alignment}
 \end{figure}
 
@@ -17,8 +19,8 @@ This phase tests the local alignment condition directly. For each Phase~B grid c
   Spearman with gain label & 0.347 & 0.341 \\
 \bottomrule
 \end{tabular}
-  \caption{Predicting Meta-MAPG gains among cells where PG fails. AUC above 0.5 means the local projection orders gained cells ahead of non-gained cells.}
+  \caption{Predicting Meta-MAPG gains among cells where PG fails. AUC above 0.5 means the peer projection \emph{magnitude} orders gained cells ahead of non-gained cells. The near-identical AUCs for peer-only vs.\ full improvement confirm that the own component is negligible (consistent with Phase~L).}
   \label{tab:phase-r-alignment}
 \end{table}
 
-Among 1927 PG-fail cells, 428 are gained by Meta-MAPG. The mean peer projection is 0.0190 on gained cells versus 0.0100 on non-gained PG-fail cells.
+Among 1927 PG-fail cells, 428 are gained by Meta-MAPG. The mean peer projection magnitude is 0.0190 on gained cells versus 0.0100 on non-gained PG-fail cells (ratio 1.9$\times$). Only 1 cell is lost by Meta-MAPG compared to PG.
