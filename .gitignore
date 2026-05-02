@@ -12,3 +12,11 @@ __pycache__/
 *.log
 *.out
 *.synctex.gz
+*.toc
+
+# Runtime logs
+artifacts/validation/run_log.jsonl
+artifacts/validation/pipeline.stdout
+
+# PNG duplicates of tracked PDF figures
+figures/validation/*.png
