@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Autonomous validation pipeline.
-# Runs phases A..F sequentially, writes a tex fragment per phase, then
+# Runs validation phases sequentially, writes a tex fragment per phase, then
 # rebuilds tex/results_validation.pdf at the end.
 
 set -e
@@ -40,6 +40,7 @@ run_phase C --phase-c-grid 21 --phase-c-steps 140 --phase-c-batch 128 --phase-c-
 # New phases (depend on A and C data above)
 run_phase A2
 run_phase P
+run_phase R
 run_phase L
 run_phase D2 --phase-d2-seeds 80 --phase-d2-n0 100 --phase-d2-total 260 --phase-d2-scale 30 --phase-d2-q 0.7 --phase-d2-batch 256
 run_phase G --phase-g-seeds 5 --phase-g-grid 21 --phase-g-steps 140 --phase-g-batch 192
@@ -49,6 +50,13 @@ run_phase I --phase-i-grid 51 --phase-i-steps 140 --phase-i-batch 192
 run_phase M --phase-m-grid 21 --phase-m-steps 140 --phase-m-batch 192
 run_phase N --phase-n-grid 21 --phase-n-steps 140 --phase-n-batch 192
 run_phase O
+run_phase T --phase-t-grid 21 --phase-t-total 140 --phase-t-warm-steps 5 10 25 50 100
+run_phase U --phase-u-grid 21 --phase-u-total 200
+run_phase V
+run_phase W
+run_phase X --phase-x-k-values 1 5 10 25 50
+run_phase Y --phase-y-max-steps 100
+run_phase Z
 
 log "BUILD pdf"
 cd tex

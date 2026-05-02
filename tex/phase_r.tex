@@ -1,0 +1,24 @@
+This phase tests the local alignment condition directly. For each Phase~B grid cell we compute the exact one-step peer correction and project its probability-space update onto the direction from the initial policy to $(C,C)$. We then ask whether this scalar predicts cells that fail under PG but succeed under Meta-MAPG.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.95\linewidth]{phase_r_alignment_regression}
+  \caption{Alignment-to-entry regression. Left: exact peer-correction projection toward $(C,C)$. Middle: projection distribution by basin outcome. Right: binned probability that Meta-MAPG succeeds among cells where PG fails.}
+  \label{fig:phase-r-alignment}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lcc}
+  \toprule
+  Metric & Peer projection & Full improvement \\
+  \midrule
+  AUC on PG-fail cells & 0.741 & 0.737 \\
+  Spearman with gain label & 0.347 & 0.341 \\
+\bottomrule
+\end{tabular}
+  \caption{Predicting Meta-MAPG gains among cells where PG fails. AUC above 0.5 means the local projection orders gained cells ahead of non-gained cells.}
+  \label{tab:phase-r-alignment}
+\end{table}
+
+Among 1927 PG-fail cells, 428 are gained by Meta-MAPG. The mean peer projection is 0.0190 on gained cells versus 0.0100 on non-gained PG-fail cells.

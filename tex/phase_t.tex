@@ -1,0 +1,29 @@
+This phase tests whether the warm-up actually hands policies into the ordinary PG attraction region. We run exact deterministic tabular updates for a fixed budget, use Meta-MAPG only for the first $K$ steps, and then switch to pure PG. If basin entry is the right story, short warm-up windows should recover a large share of the constant-Meta-MAPG gain.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.62\linewidth]{phase_t_handoff_curve}
+  \caption{Warm-up handoff curve. Meta-MAPG is used only for the first $K$ steps, followed by pure PG.}
+  \label{fig:phase-t-handoff}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lc}
+  \toprule
+  Schedule & Coop.\ basin fraction \\
+  \midrule
+  PG only & 27.4\% \\
+  Constant Meta-MAPG & 43.5\% \\
+  5 warm steps $\to$ PG & 30.8\% \\
+  10 warm steps $\to$ PG & 34.0\% \\
+  25 warm steps $\to$ PG & 39.2\% \\
+  50 warm steps $\to$ PG & 43.1\% \\
+  100 warm steps $\to$ PG & 43.5\% \\
+  \bottomrule
+\end{tabular}
+  \caption{Exact deterministic handoff basin fraction.}
+  \label{tab:phase-t-handoff}
+\end{table}
+
+The best tested handoff uses 100 warm-up steps and reaches 43.5\%, compared with 27.4\% for PG and 43.5\% for constant Meta-MAPG.

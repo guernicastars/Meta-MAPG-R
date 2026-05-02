@@ -849,6 +849,398 @@ def write_phase_q() -> None:
     (TEX_DIR / "phase_q.tex").write_text("\n\n".join(body) + "\n")
 
 
+def write_phase_r() -> None:
+    csv = ART_DIR / "phase_r_alignment_summary.csv"
+    if not csv.exists():
+        return
+    summary = pd.read_csv(csv).iloc[0]
+    body = []
+    body.append(
+        "This phase tests the local alignment condition directly. For each "
+        "Phase~B grid cell we compute the exact one-step peer correction and "
+        "project its probability-space update onto the direction from the "
+        "initial policy to $(C,C)$. We then ask whether this scalar predicts "
+        "cells that fail under PG but succeed under Meta-MAPG."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.95\\linewidth]{phase_r_alignment_regression}\n"
+        "  \\caption{Alignment-to-entry regression. Left: exact peer-correction "
+        "projection toward $(C,C)$. Middle: projection distribution by basin "
+        "outcome. Right: binned probability that Meta-MAPG succeeds among cells "
+        "where PG fails.}\n"
+        "  \\label{fig:phase-r-alignment}\n"
+        "\\end{figure}"
+    )
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        "\\begin{tabular}{lcc}\n  \\toprule\n"
+        "  Metric & Peer projection & Full improvement \\\\\n  \\midrule\n"
+        f"  AUC on PG-fail cells & {float(summary['auc_peer_projection']):.3f} & "
+        f"{float(summary['auc_projection_improvement']):.3f} \\\\\n"
+        f"  Spearman with gain label & {float(summary['spearman_peer_gain']):.3f} & "
+        f"{float(summary['spearman_improvement_gain']):.3f} \\\\\n"
+        "\\bottomrule\n\\end{tabular}\n"
+        "  \\caption{Predicting Meta-MAPG gains among cells where PG fails. "
+        "AUC above 0.5 means the local projection orders gained cells ahead of "
+        "non-gained cells.}\n"
+        "  \\label{tab:phase-r-alignment}\n\\end{table}"
+    )
+    body.append(
+        f"Among {int(summary['n_pg_fail_cells'])} PG-fail cells, "
+        f"{int(summary['n_gained_cells'])} are gained by Meta-MAPG. The mean "
+        "peer projection is "
+        f"{float(summary['mean_peer_projection_gained']):.4f} on gained cells "
+        f"versus {float(summary['mean_peer_projection_not_gained']):.4f} on "
+        "non-gained PG-fail cells."
+    )
+    (TEX_DIR / "phase_r.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_t() -> None:
+    csv = ART_DIR / "phase_t_handoff_curve.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    pg = float(df[df["schedule"] == "pg"]["coop_basin_fraction"].iloc[0])
+    const = float(df[df["schedule"] == "constant_meta_mapg"]["coop_basin_fraction"].iloc[0])
+    warm = df[df["schedule"].str.startswith("warm_")].sort_values("warm_steps")
+    best = warm.loc[warm["coop_basin_fraction"].idxmax()]
+    body = []
+    body.append(
+        "This phase tests whether the warm-up actually hands policies into the "
+        "ordinary PG attraction region. We run exact deterministic tabular "
+        "updates for a fixed budget, use Meta-MAPG only for the first $K$ steps, "
+        "and then switch to pure PG. If basin entry is the right story, short "
+        "warm-up windows should recover a large share of the constant-Meta-MAPG "
+        "gain."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.62\\linewidth]{phase_t_handoff_curve}\n"
+        "  \\caption{Warm-up handoff curve. Meta-MAPG is used only for the first "
+        "$K$ steps, followed by pure PG.}\n"
+        "  \\label{fig:phase-t-handoff}\n"
+        "\\end{figure}"
+    )
+    rows = ["\\begin{tabular}{lc}\n  \\toprule", "  Schedule & Coop.\\ basin fraction \\\\\n  \\midrule"]
+    rows.append(f"  PG only & {pg*100:.1f}\\% \\\\")
+    rows.append(f"  Constant Meta-MAPG & {const*100:.1f}\\% \\\\")
+    for _, row in warm.iterrows():
+        rows.append(f"  {int(row['warm_steps'])} warm steps $\\to$ PG & {float(row['coop_basin_fraction'])*100:.1f}\\% \\\\")
+    rows.append("  \\bottomrule\n\\end{tabular}")
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        + "\n".join(rows)
+        + "\n  \\caption{Exact deterministic handoff basin fraction.}\n"
+        "  \\label{tab:phase-t-handoff}\n\\end{table}"
+    )
+    body.append(
+        f"The best tested handoff uses {int(best['warm_steps'])} warm-up steps "
+        f"and reaches {float(best['coop_basin_fraction'])*100:.1f}\\%, compared "
+        f"with {pg*100:.1f}\\% for PG and {const*100:.1f}\\% for constant Meta-MAPG."
+    )
+    (TEX_DIR / "phase_t.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_u() -> None:
+    csv = ART_DIR / "phase_u_high_lambda_stress.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    last = df.sort_values("peer_coef").iloc[-1]
+    body = []
+    body.append(
+        "This phase tries to break the coefficient story by removing the logit "
+        "clip and running exact deterministic Meta-MAPG with much larger peer "
+        "coefficients than the main report. Divergence is declared if any logit "
+        "exceeds 50 in magnitude or becomes non-finite."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.82\\linewidth]{phase_u_high_lambda_stress}\n"
+        "  \\caption{High-$\\lambda$ no-clip stress test in tabular Stag Hunt. "
+        "The left panel tracks basin fraction and divergence; the right panel "
+        "tracks logit magnitudes.}\n"
+        "  \\label{fig:phase-u-stress}\n"
+        "\\end{figure}"
+    )
+    rows = ["\\begin{tabular}{lccc}\n  \\toprule"]
+    rows.append("  $\\lambda$ & Coop.\\ basin & Divergence & Median max $|\\theta|$ \\\\\n  \\midrule")
+    for _, row in df.iterrows():
+        rows.append(
+            f"  {float(row['peer_coef']):.1f} & {float(row['coop_basin_fraction'])*100:.1f}\\% "
+            f"& {float(row['divergence_fraction'])*100:.1f}\\% "
+            f"& {float(row['median_max_abs_logit']):.2f} \\\\"
+        )
+    rows.append("  \\bottomrule\n\\end{tabular}")
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        + "\n".join(rows)
+        + "\n  \\caption{No-clip high-coefficient stress summary.}\n"
+        "  \\label{tab:phase-u-stress}\n\\end{table}"
+    )
+    body.append(
+        f"At the largest tested coefficient, $\\lambda={float(last['peer_coef']):.1f}$, "
+        f"the divergence rate is {float(last['divergence_fraction'])*100:.1f}\\%. "
+        "In this tabular Stag Hunt setup, high $\\lambda$ does not break by "
+        "numerical explosion; a stronger counterexample must change the game "
+        "geometry rather than only increasing the coefficient."
+    )
+    (TEX_DIR / "phase_u.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_v() -> None:
+    csv = ART_DIR / "phase_v_payoff_geometry_search.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    worst = df.nsmallest(1, "delta_meta_minus_pg").iloc[0]
+    best = df.nlargest(1, "delta_meta_minus_pg").iloc[0]
+    n_hurt = int((df["delta_meta_minus_pg"] < 0).sum())
+    body = []
+    body.append(
+        "This phase searches a wider symmetric $2\\times2$ payoff family with "
+        "$R=4$ and $P=2$, varying the sucker payoff $S$ and temptation payoff "
+        "$T$ while keeping $(C,C)$ socially better than miscoordination. The "
+        "goal is adversarial: find payoff geometries where the peer correction "
+        "shrinks, rather than expands, the cooperative basin."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.9\\linewidth]{phase_v_payoff_geometry_search}\n"
+        "  \\caption{Payoff-geometry counterexample search. Green means "
+        "Meta-MAPG expands the cooperative basin relative to PG; red means it "
+        "shrinks it. The worst cases are harmony-like regions where PG already "
+        "has a large cooperative basin.}\n"
+        "  \\label{fig:phase-v-payoff-search}\n"
+        "\\end{figure}"
+    )
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        "\\begin{tabular}{lccccc}\n  \\toprule\n"
+        "  Case & $S$ & $T$ & PG & Meta-MAPG & $\\Delta$ \\\\\n  \\midrule\n"
+        f"  Worst & {float(worst['S']):.2f} & {float(worst['T']):.2f} "
+        f"& {float(worst['pg_basin_fraction'])*100:.1f}\\% "
+        f"& {float(worst['meta_mapg_basin_fraction'])*100:.1f}\\% "
+        f"& {float(worst['delta_meta_minus_pg'])*100:.1f}\\% \\\\\n"
+        f"  Best & {float(best['S']):.2f} & {float(best['T']):.2f} "
+        f"& {float(best['pg_basin_fraction'])*100:.1f}\\% "
+        f"& {float(best['meta_mapg_basin_fraction'])*100:.1f}\\% "
+        f"& {float(best['delta_meta_minus_pg'])*100:.1f}\\% \\\\\n"
+        "\\bottomrule\n\\end{tabular}\n"
+        "  \\caption{Extremes from the payoff-geometry search.}\n"
+        "  \\label{tab:phase-v-payoff-search}\n\\end{table}"
+    )
+    body.append(
+        f"Meta-MAPG hurts PG in {n_hurt} searched payoff settings. These are "
+        "not Stag-Hunt counterexamples to the main experiment; they are boundary "
+        "cases showing why the theorem needs an explicit alignment condition "
+        "instead of a universal peer-correction-improves-selection claim."
+    )
+    (TEX_DIR / "phase_v.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_w() -> None:
+    csv = ART_DIR / "phase_w_margin_summary.csv"
+    if not csv.exists():
+        return
+    summary = pd.read_csv(csv).iloc[0]
+    body = []
+    body.append(
+        "This phase turns the basin-entry story into a separatrix-margin test. "
+        "Using the Phase~B PG basin mask, each initial policy receives a signed "
+        "distance to the nearest opposite PG-basin cell. For PG-fail cells this "
+        "is the empirical distance that an early update must overcome before "
+        "ordinary PG should be expected to finish the cooperative selection."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.95\\linewidth]{phase_w_separatrix_margin}\n"
+        "  \\caption{Separatrix-margin certificate. Left: signed distance to the "
+        "PG basin boundary. Middle: first-step peer displacement versus boundary "
+        "distance. Right: gain probability after normalizing the peer projection "
+        "by the empirical boundary distance.}\n"
+        "  \\label{fig:phase-w-margin}\n"
+        "\\end{figure}"
+    )
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        "\\begin{tabular}{lcc}\n  \\toprule\n"
+        "  Metric & Peer / margin & Improvement / margin \\\\\n  \\midrule\n"
+        f"  AUC on PG-fail cells & {float(summary['auc_peer_margin_ratio']):.3f} & "
+        f"{float(summary['auc_improvement_margin_ratio']):.3f} \\\\\n"
+        f"  Spearman with gain label & {float(summary['spearman_peer_margin_ratio']):.3f} & "
+        f"{float(summary['spearman_improvement_margin_ratio']):.3f} \\\\\n"
+        "\\bottomrule\n\\end{tabular}\n"
+        "  \\caption{Margin-normalized prediction of Meta-MAPG gains.}\n"
+        "  \\label{tab:phase-w-margin}\n\\end{table}"
+    )
+    body.append(
+        f"The median boundary distance is {float(summary['median_boundary_distance_gained']):.3f} "
+        "for gained PG-fail cells and "
+        f"{float(summary['median_boundary_distance_not_gained']):.3f} for non-gained "
+        "PG-fail cells. This is stricter than Phase~R: the peer term must be "
+        "large in the right direction relative to the local separatrix margin, "
+        "not merely positive."
+    )
+    (TEX_DIR / "phase_w.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_x() -> None:
+    csv = ART_DIR / "phase_x_cumulative_alignment_summary.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    best_auc = df.loc[df["auc_cumulative_peer"].idxmax()]
+    best_entry = df.loc[df["pg_basin_entry_rate_gained"].idxmax()]
+    body = []
+    body.append(
+        "This phase checks whether the one-step alignment certificate remains "
+        "valid over the finite early-time window that actually moves policies. "
+        "For $K\\in\\{1,5,10,25,50\\}$ we accumulate learning-rate-weighted "
+        "Meta-MAPG prefix projections and ask whether the prefix predicts final "
+        "Meta-MAPG gains among cells where PG fails."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.74\\linewidth]{phase_x_cumulative_alignment}\n"
+        "  \\caption{Cumulative early-alignment test. Left: AUC for predicting "
+        "Meta-MAPG gains among PG-fail cells. Right: fraction of PG-fail cells "
+        "whose Meta-MAPG prefix lands in the nearest-cell PG basin.}\n"
+        "  \\label{fig:phase-x-cumulative}\n"
+        "\\end{figure}"
+    )
+    rows = ["\\begin{tabular}{lccc}\n  \\toprule"]
+    rows.append("  $K$ & Peer AUC & Entry rate, PG-fail & Entry rate, gained \\\\\n  \\midrule")
+    for _, row in df.iterrows():
+        rows.append(
+            f"  {int(row['k'])} & {float(row['auc_cumulative_peer']):.3f} "
+            f"& {float(row['pg_basin_entry_rate_pg_fail'])*100:.1f}\\% "
+            f"& {float(row['pg_basin_entry_rate_gained'])*100:.1f}\\% \\\\"
+        )
+    rows.append("  \\bottomrule\n\\end{tabular}")
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        + "\n".join(rows)
+        + "\n  \\caption{Finite-prefix alignment and empirical PG-basin entry.}\n"
+        "  \\label{tab:phase-x-cumulative}\n\\end{table}"
+    )
+    body.append(
+        f"The strongest peer-prefix AUC occurs at $K={int(best_auc['k'])}$ "
+        f"with AUC {float(best_auc['auc_cumulative_peer']):.3f}. The largest "
+        f"gained-cell PG-entry rate occurs at $K={int(best_entry['k'])}$ and is "
+        f"{float(best_entry['pg_basin_entry_rate_gained'])*100:.1f}\\%. This "
+        "tests a finite-time version of the theory: cumulative aligned motion "
+        "should carry policies across the empirical PG separatrix."
+    )
+    (TEX_DIR / "phase_x.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_y() -> None:
+    csv = ART_DIR / "phase_y_min_warmup_summary.csv"
+    if not csv.exists():
+        return
+    summary = pd.read_csv(csv).iloc[0]
+    body = []
+    body.append(
+        "This phase asks for the minimal Meta-MAPG warm-up needed to enter the "
+        "ordinary PG basin. Starting from every Phase~B grid cell where PG "
+        "fails, we run exact Meta-MAPG updates and record the first step whose "
+        "nearest grid cell lies inside the PG success basin."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.74\\linewidth]{phase_y_min_warmup}\n"
+        "  \\caption{Minimal warm-up crossing time. Left: first Meta-MAPG step "
+        "that reaches the empirical PG basin. Right: crossing-time distribution "
+        "split by whether the cell is ultimately gained by Meta-MAPG.}\n"
+        "  \\label{fig:phase-y-min-warmup}\n"
+        "\\end{figure}"
+    )
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        "\\begin{tabular}{lc}\n  \\toprule\n"
+        "  Metric & Value \\\\\n  \\midrule\n"
+        f"  PG-fail cells & {int(summary['n_pg_fail_cells'])} \\\\\n"
+        f"  Meta-MAPG gained cells & {int(summary['n_gained_cells'])} \\\\\n"
+        f"  PG-fail cells crossing PG basin & {int(summary['n_crossed_cells'])} \\\\\n"
+        f"  Gained cells crossing PG basin & {int(summary['n_gained_crossed_cells'])} \\\\\n"
+        f"  Crossing rate among gained cells & {float(summary['cross_rate_gained'])*100:.1f}\\% \\\\\n"
+        f"  Median crossing step among gained cells & {float(summary['median_cross_step_gained']):.1f} \\\\\n"
+        "\\bottomrule\n\\end{tabular}\n"
+        "  \\caption{Minimal warm-up crossing summary.}\n"
+        "  \\label{tab:phase-y-min-warmup}\n\\end{table}"
+    )
+    body.append(
+        "This is the most direct operational form of the basin-entry claim: "
+        "Meta-MAPG should only be needed until the trajectory crosses the "
+        "ordinary PG separatrix. Cells that never cross within the tested window "
+        "are candidates for either longer warm-up, weaker alignment, or a missing "
+        "condition in the current theory."
+    )
+    (TEX_DIR / "phase_y.tex").write_text("\n\n".join(body) + "\n")
+
+
+def write_phase_z() -> None:
+    csv = ART_DIR / "phase_z_alignment_adversary_summary.csv"
+    if not csv.exists():
+        return
+    summary = pd.read_csv(csv).iloc[0]
+    df = pd.read_csv(ART_DIR / "phase_z_alignment_adversary.csv")
+    worst = df.nsmallest(1, "delta_meta_minus_pg").iloc[0]
+    body = []
+    body.append(
+        "This phase tries to break the naive theory that a positive local peer "
+        "projection is sufficient for basin improvement. For each payoff geometry "
+        "from Phase~V, we compare the average exact first-step peer displacement "
+        "toward $(C,C)$ against the final Meta-MAPG-minus-PG basin delta."
+    )
+    body.append(
+        "\\begin{figure}[h]\n"
+        "  \\centering\n"
+        "  \\includegraphics[width=0.82\\linewidth]{phase_z_alignment_adversary}\n"
+        "  \\caption{Adversarial alignment search. Left: mean first-step peer "
+        "displacement versus final basin delta. Right: payoff cells where the "
+        "mean local displacement is positive but Meta-MAPG still shrinks the PG "
+        "basin.}\n"
+        "  \\label{fig:phase-z-adversary}\n"
+        "\\end{figure}"
+    )
+    body.append(
+        "\\begin{table}[h]\n  \\centering\n"
+        "\\begin{tabular}{lc}\n  \\toprule\n"
+        "  Metric & Value \\\\\n  \\midrule\n"
+        f"  Games searched & {int(summary['n_games'])} \\\\\n"
+        f"  Games where Meta-MAPG hurts PG & {int(summary['n_hurt_games'])} \\\\\n"
+        f"  Positive all-cell projection but hurts & {int(summary['n_positive_all_projection_but_hurts'])} \\\\\n"
+        f"  Positive PG-fail projection but hurts & {int(summary['n_positive_fail_projection_but_hurts'])} \\\\\n"
+        f"  Spearman(mean projection, basin delta) & {float(summary['corr_mean_all_delta']):.3f} \\\\\n"
+        "\\bottomrule\n\\end{tabular}\n"
+        "  \\caption{Adversarial test of a naive local-alignment theorem.}\n"
+        "  \\label{tab:phase-z-adversary}\n\\end{table}"
+    )
+    body.append(
+        f"The worst searched payoff has $S={float(worst['S']):.2f}$ and "
+        f"$T={float(worst['T']):.2f}$, with basin delta "
+        f"{float(worst['delta_meta_minus_pg'])*100:.1f}\\%. The sweep finds "
+        f"{int(summary['n_positive_all_projection_but_hurts'])} games where "
+        "the all-cell average peer projection is positive but Meta-MAPG still "
+        "shrinks the PG basin. It finds no such cases when the projection is "
+        "averaged only over PG-fail cells. This breaks the broadest local-"
+        "alignment claim while supporting the sharper margin/crossing condition "
+        "from Phases~W--Y."
+    )
+    (TEX_DIR / "phase_z.tex").write_text("\n\n".join(body) + "\n")
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument(
@@ -876,6 +1268,14 @@ def main() -> None:
         "o": write_phase_o,
         "p": write_phase_p,
         "q": write_phase_q,
+        "r": write_phase_r,
+        "t": write_phase_t,
+        "u": write_phase_u,
+        "v": write_phase_v,
+        "w": write_phase_w,
+        "x": write_phase_x,
+        "y": write_phase_y,
+        "z": write_phase_z,
     }
     for phase in args.phases:
         fn = fns.get(phase.lower())

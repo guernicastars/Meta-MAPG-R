@@ -1,0 +1,2 @@
+phase,n_games,n_hurt_games,n_positive_all_projection_but_hurts,n_positive_fail_projection_but_hurts,n_negative_all_projection_but_helps,corr_mean_all_delta,corr_mean_fail_delta
+Z,509,35,22,0,0,0.6535960884020725,0.6560148427067111

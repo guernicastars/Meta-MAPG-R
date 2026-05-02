@@ -1,0 +1,24 @@
+This phase turns the basin-entry story into a separatrix-margin test. Using the Phase~B PG basin mask, each initial policy receives a signed distance to the nearest opposite PG-basin cell. For PG-fail cells this is the empirical distance that an early update must overcome before ordinary PG should be expected to finish the cooperative selection.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.95\linewidth]{phase_w_separatrix_margin}
+  \caption{Separatrix-margin certificate. Left: signed distance to the PG basin boundary. Middle: first-step peer displacement versus boundary distance. Right: gain probability after normalizing the peer projection by the empirical boundary distance.}
+  \label{fig:phase-w-margin}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lcc}
+  \toprule
+  Metric & Peer / margin & Improvement / margin \\
+  \midrule
+  AUC on PG-fail cells & 0.954 & 0.959 \\
+  Spearman with gain label & 0.654 & 0.660 \\
+\bottomrule
+\end{tabular}
+  \caption{Margin-normalized prediction of Meta-MAPG gains.}
+  \label{tab:phase-w-margin}
+\end{table}
+
+The median boundary distance is 0.051 for gained PG-fail cells and 0.308 for non-gained PG-fail cells. This is stricter than Phase~R: the peer term must be large in the right direction relative to the local separatrix margin, not merely positive.

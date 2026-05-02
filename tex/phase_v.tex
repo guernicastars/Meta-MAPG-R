@@ -1,0 +1,24 @@
+This phase searches a wider symmetric $2\times2$ payoff family with $R=4$ and $P=2$, varying the sucker payoff $S$ and temptation payoff $T$ while keeping $(C,C)$ socially better than miscoordination. The goal is adversarial: find payoff geometries where the peer correction shrinks, rather than expands, the cooperative basin.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.9\linewidth]{phase_v_payoff_geometry_search}
+  \caption{Payoff-geometry counterexample search. Green means Meta-MAPG expands the cooperative basin relative to PG; red means it shrinks it. The worst cases are harmony-like regions where PG already has a large cooperative basin.}
+  \label{fig:phase-v-payoff-search}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lccccc}
+  \toprule
+  Case & $S$ & $T$ & PG & Meta-MAPG & $\Delta$ \\
+  \midrule
+  Worst & 0.50 & -1.00 & 84.4\% & 80.4\% & -4.0\% \\
+  Best & -6.00 & 2.50 & 8.0\% & 36.0\% & 28.0\% \\
+\bottomrule
+\end{tabular}
+  \caption{Extremes from the payoff-geometry search.}
+  \label{tab:phase-v-payoff-search}
+\end{table}
+
+Meta-MAPG hurts PG in 35 searched payoff settings. These are not Stag-Hunt counterexamples to the main experiment; they are boundary cases showing why the theorem needs an explicit alignment condition instead of a universal peer-correction-improves-selection claim.

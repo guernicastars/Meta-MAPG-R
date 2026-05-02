@@ -1,0 +1,2 @@
+phase,max_steps,n_pg_fail_cells,n_gained_cells,n_crossed_cells,n_gained_crossed_cells,cross_rate_pg_fail,cross_rate_gained,median_cross_step_gained,median_cross_step_not_gained
+Y,100,1927,428,427,385,0.22158796056045668,0.8995327102803738,8.0,28.5

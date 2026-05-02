@@ -1,0 +1,2 @@
+phase,n_cells,n_pg_fail_cells,n_gained_cells,auc_peer_projection,auc_projection_improvement,spearman_peer_gain,spearman_improvement_gain,mean_peer_projection_gained,mean_peer_projection_not_gained
+R,2601,1927,428,0.7407820166715505,0.7367185600369094,0.34670158953596014,0.340850607684514,0.019038625547190404,0.009975283516034016

@@ -1,0 +1,27 @@
+This phase tries to break the naive theory that a positive local peer projection is sufficient for basin improvement. For each payoff geometry from Phase~V, we compare the average exact first-step peer displacement toward $(C,C)$ against the final Meta-MAPG-minus-PG basin delta.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.82\linewidth]{phase_z_alignment_adversary}
+  \caption{Adversarial alignment search. Left: mean first-step peer displacement versus final basin delta. Right: payoff cells where the mean local displacement is positive but Meta-MAPG still shrinks the PG basin.}
+  \label{fig:phase-z-adversary}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lc}
+  \toprule
+  Metric & Value \\
+  \midrule
+  Games searched & 509 \\
+  Games where Meta-MAPG hurts PG & 35 \\
+  Positive all-cell projection but hurts & 22 \\
+  Positive PG-fail projection but hurts & 0 \\
+  Spearman(mean projection, basin delta) & 0.654 \\
+\bottomrule
+\end{tabular}
+  \caption{Adversarial test of a naive local-alignment theorem.}
+  \label{tab:phase-z-adversary}
+\end{table}
+
+The worst searched payoff has $S=0.50$ and $T=-1.00$, with basin delta -4.0\%. The sweep finds 22 games where the all-cell average peer projection is positive but Meta-MAPG still shrinks the PG basin. It finds no such cases when the projection is averaged only over PG-fail cells. This breaks the broadest local-alignment claim while supporting the sharper margin/crossing condition from Phases~W--Y.

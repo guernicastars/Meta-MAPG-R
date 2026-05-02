@@ -105,6 +105,63 @@ def bootstrap_mean_ci(
     return float(values.mean()), float(lo), float(hi)
 
 
+def exact_components_horizon1(theta: np.ndarray, game: Game, inner_lr: float) -> GradientComponents:
+    p = sigmoid(theta[:, 0])
+    base = np.zeros((2, game.n_states), dtype=float)
+    own = np.zeros((2, game.n_states), dtype=float)
+    peer = np.zeros((2, game.n_states), dtype=float)
+    reward = np.zeros(2, dtype=float)
+    outcomes = []
+    for c0 in (False, True):
+        for c1 in (False, True):
+            prob = (p[0] if c0 else 1.0 - p[0]) * (p[1] if c1 else 1.0 - p[1])
+            idx0 = 0 if c0 else 1
+            idx1 = 0 if c1 else 1
+            returns = np.array([game.payoff_p1[idx0, idx1], game.payoff_p2[idx0, idx1]])
+            scores = np.array([[float(c0) - p[0]], [float(c1) - p[1]]])
+            hess_diag = np.array([[-p[0] * (1.0 - p[0])], [-p[1] * (1.0 - p[1])]])
+            outcomes.append((prob, returns, scores, hess_diag))
+            reward += prob * returns
+
+    for player in range(2):
+        opp = 1 - player
+        g_self = sum(prob * returns[player] * scores[player] for prob, returns, scores, _ in outcomes)
+        q_self_wrt_opp = sum(prob * returns[player] * scores[opp] for prob, returns, scores, _ in outcomes)
+        h_self = sum(
+            prob * returns[player] * np.outer(scores[player], scores[player])
+            for prob, returns, scores, _ in outcomes
+        )
+        h_self += np.diag(
+            sum(prob * returns[player] * hess_diag[player] for prob, returns, _, hess_diag in outcomes)
+        )
+        cross_opp_self = sum(
+            prob * returns[opp] * np.outer(scores[opp], scores[player])
+            for prob, returns, scores, _ in outcomes
+        )
+        base[player] = g_self
+        own[player] = inner_lr * h_self.T @ g_self
+        peer[player] = inner_lr * cross_opp_self.T @ q_self_wrt_opp
+    return GradientComponents(base=base, own=own, peer=peer, reward_estimate=reward)
+
+
+def probability_delta(theta: np.ndarray, update: np.ndarray) -> np.ndarray:
+    p = sigmoid(theta[:, 0])
+    return update[:, 0] * p * (1.0 - p)
+
+
+def auc_score(scores: np.ndarray, labels: np.ndarray) -> float:
+    labels = labels.astype(bool)
+    pos = scores[labels]
+    neg = scores[~labels]
+    if pos.size == 0 or neg.size == 0:
+        return float("nan")
+    return float((pos[:, None] > neg[None, :]).mean() + 0.5 * (pos[:, None] == neg[None, :]).mean())
+
+
+def step_lr(cfg: Config, step_index: int) -> float:
+    return cfg.lr / ((step_index + 10.0) ** cfg.lr_power)
+
+
 # -------------------------------------------------------------------------
 # Phase A : expected-update arrows
 # -------------------------------------------------------------------------
@@ -1545,6 +1602,916 @@ def plot_phase_q(df: pd.DataFrame, cfg: Config) -> None:
 
 
 # -------------------------------------------------------------------------
+# Phase R : alignment-to-entry regression
+# -------------------------------------------------------------------------
+def run_phase_r(cfg: Config) -> Path:
+    game = stag_hunt()
+    grid = np.load(cfg.outdir / "phase_b_grid.npy")
+    pg = np.load(cfg.outdir / "phase_b_basin_standard_pg.npy")
+    mm = np.load(cfg.outdir / "phase_b_basin_meta_mapg.npy")
+    rows: list[dict] = []
+    for i, p1 in enumerate(grid):
+        for j, p2 in enumerate(grid):
+            theta = np.zeros((2, game.n_states), dtype=float)
+            theta[0, 0] = logit(float(p1))
+            theta[1, 0] = logit(float(p2))
+            comps = exact_components_horizon1(theta, game, cfg.inner_lr)
+            pg_update = comps.base
+            peer_update = cfg.peer_coef * comps.peer
+            own_update = cfg.own_coef * comps.own
+            mm_update = pg_update + own_update + peer_update
+            pg_dp = probability_delta(theta, pg_update)
+            peer_dp = probability_delta(theta, peer_update)
+            own_dp = probability_delta(theta, own_update)
+            mm_dp = probability_delta(theta, mm_update)
+            target = np.array([1.0 - p1, 1.0 - p2], dtype=float)
+            target_norm = max(float(np.linalg.norm(target)), 1e-12)
+            target_unit = target / target_norm
+            pg_decrease = float(np.dot(pg_dp, target_unit))
+            peer_projection = float(np.dot(peer_dp, target_unit))
+            own_projection = float(np.dot(own_dp, target_unit))
+            mm_decrease = float(np.dot(mm_dp, target_unit))
+            pg_success = int(pg[i, j])
+            mm_success = int(mm[i, j])
+            if pg_success and mm_success:
+                group = "shared_success"
+            elif (not pg_success) and mm_success:
+                group = "gained"
+            elif pg_success and (not mm_success):
+                group = "lost"
+            else:
+                group = "shared_failure"
+            rows.append(
+                {
+                    "phase": "R",
+                    "init_p1": float(p1),
+                    "init_p2": float(p2),
+                    "pg_success": pg_success,
+                    "meta_mapg_success": mm_success,
+                    "gain_group": group,
+                    "peer_projection_to_cc": peer_projection,
+                    "own_projection_to_cc": own_projection,
+                    "pg_projection_to_cc": pg_decrease,
+                    "meta_mapg_projection_to_cc": mm_decrease,
+                    "projection_improvement": mm_decrease - pg_decrease,
+                }
+            )
+    df = pd.DataFrame(rows)
+    fail = df[df["pg_success"] == 0].copy()
+    labels = fail["meta_mapg_success"].to_numpy(dtype=int)
+    summary = pd.DataFrame(
+        [
+            {
+                "phase": "R",
+                "n_cells": int(len(df)),
+                "n_pg_fail_cells": int(len(fail)),
+                "n_gained_cells": int((fail["meta_mapg_success"] == 1).sum()),
+                "auc_peer_projection": auc_score(fail["peer_projection_to_cc"].to_numpy(), labels),
+                "auc_projection_improvement": auc_score(fail["projection_improvement"].to_numpy(), labels),
+                "spearman_peer_gain": float(fail["peer_projection_to_cc"].corr(fail["meta_mapg_success"], method="spearman")),
+                "spearman_improvement_gain": float(fail["projection_improvement"].corr(fail["meta_mapg_success"], method="spearman")),
+                "mean_peer_projection_gained": float(fail.loc[fail["meta_mapg_success"] == 1, "peer_projection_to_cc"].mean()),
+                "mean_peer_projection_not_gained": float(fail.loc[fail["meta_mapg_success"] == 0, "peer_projection_to_cc"].mean()),
+            }
+        ]
+    )
+    out = cfg.outdir / "phase_r_alignment_cells.csv"
+    summary_out = cfg.outdir / "phase_r_alignment_summary.csv"
+    df.to_csv(out, index=False)
+    summary.to_csv(summary_out, index=False)
+    plot_phase_r(df, cfg)
+    return summary_out
+
+
+def plot_phase_r(df: pd.DataFrame, cfg: Config) -> None:
+    grid = np.sort(df["init_p1"].unique())
+    n = grid.size
+    proj = df.sort_values(["init_p1", "init_p2"])["peer_projection_to_cc"].to_numpy().reshape(n, n)
+    vmax = max(abs(float(np.nanmin(proj))), abs(float(np.nanmax(proj))), 1e-12)
+    fig, axes = plt.subplots(1, 3, figsize=(10.2, 3.2))
+    ax = axes[0]
+    im = ax.imshow(
+        proj.T,
+        origin="lower",
+        extent=(grid[0], grid[-1], grid[0], grid[-1]),
+        cmap="RdYlGn",
+        norm=TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax),
+        aspect="equal",
+        interpolation="bilinear",
+    )
+    plt.colorbar(im, ax=ax, label="peer projection")
+    ax.set_title("Peer term toward $(C,C)$", fontsize=10)
+    ax.set_xlabel(r"$p_1^0$")
+    ax.set_ylabel(r"$p_2^0$")
+
+    ax = axes[1]
+    order = ["shared_failure", "gained", "shared_success", "lost"]
+    data = [df[df["gain_group"] == group]["peer_projection_to_cc"].to_numpy() for group in order]
+    ax.boxplot(data, tick_labels=["fail", "gained", "shared", "lost"], showfliers=False)
+    ax.axhline(0.0, color="grey", linewidth=0.8, linestyle=":")
+    ax.set_ylabel("Peer projection")
+    ax.set_title("Projection by basin outcome", fontsize=10)
+    ax.tick_params(axis="x", labelrotation=15)
+
+    ax = axes[2]
+    fail = df[df["pg_success"] == 0].copy()
+    fail["bin"] = pd.qcut(fail["peer_projection_to_cc"], q=6, duplicates="drop")
+    binned = fail.groupby("bin", observed=True).agg(
+        x=("peer_projection_to_cc", "mean"),
+        p_gain=("meta_mapg_success", "mean"),
+        n=("meta_mapg_success", "size"),
+    )
+    ax.plot(binned["x"], binned["p_gain"], marker="o", linewidth=1.8, color=METHOD_COLORS["meta_mapg"])
+    for _, row in binned.iterrows():
+        ax.text(row["x"], row["p_gain"] + 0.025, str(int(row["n"])), ha="center", fontsize=7)
+    ax.set_xlabel("Peer projection among PG-fail cells")
+    ax.set_ylabel(r"$P(\mathrm{MM\ succeeds})$")
+    ax.set_ylim(-0.02, 1.02)
+    ax.grid(alpha=0.25)
+    ax.set_title("Binned gain probability", fontsize=10)
+
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_r_alignment_regression.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase T : warm-up handoff into ordinary PG
+# -------------------------------------------------------------------------
+def deterministic_rollout_schedule(
+    game: Game,
+    init_theta: np.ndarray,
+    cfg: Config,
+    total_steps: int,
+    warm_steps: int,
+    lambda_value: float,
+    clip: float | None = 8.0,
+) -> tuple[np.ndarray, float, bool]:
+    theta = init_theta.copy()
+    max_abs = float(np.max(np.abs(theta)))
+    diverged = False
+    for step in range(total_steps):
+        method = "meta_mapg" if step < warm_steps else "standard_pg"
+        lam = lambda_value if step < warm_steps else 0.0
+        comps = exact_components_horizon1(theta, game, cfg.inner_lr)
+        update = update_from_components(comps, method, lam, cfg.own_coef)
+        theta = theta + cfg.lr / ((step + 10.0) ** cfg.lr_power) * update
+        if clip is not None:
+            theta = np.clip(theta, -clip, clip)
+        max_abs = max(max_abs, float(np.max(np.abs(theta))))
+        if not np.all(np.isfinite(theta)) or max_abs > 50.0:
+            diverged = True
+            break
+    return theta, max_abs, diverged
+
+
+def run_phase_t(cfg: Config, grid_size: int, total_steps: int, warm_steps_list: list[int]) -> Path:
+    game = stag_hunt()
+    grid = np.linspace(0.05, 0.95, grid_size)
+    rows: list[dict] = []
+    schedules = [("pg", 0, 0.0), ("constant_meta_mapg", total_steps, cfg.peer_coef)]
+    schedules += [(f"warm_{warm_steps}_then_pg", warm_steps, cfg.peer_coef) for warm_steps in warm_steps_list]
+    for label, warm_steps, lam in schedules:
+        successes = 0
+        for p1 in grid:
+            for p2 in grid:
+                init_theta = np.array([[logit(float(p1))], [logit(float(p2))]], dtype=float)
+                theta, _, diverged = deterministic_rollout_schedule(
+                    game=game,
+                    init_theta=init_theta,
+                    cfg=cfg,
+                    total_steps=total_steps,
+                    warm_steps=warm_steps,
+                    lambda_value=lam,
+                    clip=8.0,
+                )
+                successes += int((not diverged) and is_success(theta, game, threshold=cfg.success_threshold))
+        rows.append(
+            {
+                "phase": "T",
+                "schedule": label,
+                "warm_steps": int(warm_steps),
+                "total_steps": int(total_steps),
+                "coop_basin_fraction": successes / float(grid_size * grid_size),
+                "n_cells": int(grid_size * grid_size),
+            }
+        )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_t_handoff_curve.csv"
+    df.to_csv(out, index=False)
+    plot_phase_t(df, cfg)
+    return out
+
+
+def plot_phase_t(df: pd.DataFrame, cfg: Config) -> None:
+    fig, ax = plt.subplots(figsize=(5.0, 3.2))
+    pg = df[df["schedule"] == "pg"]
+    const = df[df["schedule"] == "constant_meta_mapg"]
+    warm = df[df["schedule"].str.startswith("warm_")].sort_values("warm_steps")
+    if not pg.empty:
+        ax.axhline(float(pg["coop_basin_fraction"].iloc[0]), color=METHOD_COLORS["standard_pg"], linestyle="--", label="PG")
+    if not const.empty:
+        ax.axhline(float(const["coop_basin_fraction"].iloc[0]), color=METHOD_COLORS["meta_mapg"], linestyle=":", label="constant Meta-MAPG")
+    ax.plot(warm["warm_steps"], warm["coop_basin_fraction"], marker="o", linewidth=1.8, color="#2fbf71", label="warm -> PG")
+    ax.set_xlabel("Meta-MAPG warm-up steps before PG handoff")
+    ax.set_ylabel("Cooperative basin fraction")
+    ax.set_ylim(0, 1.02)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_t_handoff_curve.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase U : high-lambda no-clip stress test
+# -------------------------------------------------------------------------
+def run_phase_u(
+    cfg: Config,
+    lambdas: list[float],
+    grid_size: int,
+    total_steps: int,
+) -> Path:
+    game = stag_hunt()
+    grid = np.linspace(0.05, 0.95, grid_size)
+    rows: list[dict] = []
+    for lam in lambdas:
+        successes = 0
+        diverged = 0
+        max_abs_values = []
+        for p1 in grid:
+            for p2 in grid:
+                init_theta = np.array([[logit(float(p1))], [logit(float(p2))]], dtype=float)
+                theta, max_abs, did_diverge = deterministic_rollout_schedule(
+                    game=game,
+                    init_theta=init_theta,
+                    cfg=cfg,
+                    total_steps=total_steps,
+                    warm_steps=total_steps,
+                    lambda_value=float(lam),
+                    clip=None,
+                )
+                diverged += int(did_diverge)
+                max_abs_values.append(max_abs)
+                successes += int((not did_diverge) and is_success(theta, game, threshold=cfg.success_threshold))
+        rows.append(
+            {
+                "phase": "U",
+                "peer_coef": float(lam),
+                "coop_basin_fraction": successes / float(grid_size * grid_size),
+                "divergence_fraction": diverged / float(grid_size * grid_size),
+                "median_max_abs_logit": float(np.median(max_abs_values)),
+                "max_abs_logit": float(np.max(max_abs_values)),
+                "n_cells": int(grid_size * grid_size),
+            }
+        )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_u_high_lambda_stress.csv"
+    df.to_csv(out, index=False)
+    plot_phase_u(df, cfg)
+    return out
+
+
+def plot_phase_u(df: pd.DataFrame, cfg: Config) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.2))
+    ax = axes[0]
+    ax.plot(df["peer_coef"], df["coop_basin_fraction"], marker="o", linewidth=1.8, color=METHOD_COLORS["meta_mapg"], label="coop basin")
+    ax.plot(df["peer_coef"], df["divergence_fraction"], marker="s", linewidth=1.5, color="#e45756", label="divergence")
+    ax.set_xlabel(r"Peer coefficient $\lambda$")
+    ax.set_ylabel("Fraction")
+    ax.set_ylim(-0.02, 1.02)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=8)
+    ax = axes[1]
+    ax.plot(df["peer_coef"], df["median_max_abs_logit"], marker="o", linewidth=1.8, label="median max |logit|")
+    ax.plot(df["peer_coef"], df["max_abs_logit"], marker="s", linewidth=1.5, label="max |logit|")
+    ax.axhline(8.0, color="grey", linestyle=":", linewidth=1.0, label="old clip")
+    ax.set_xlabel(r"Peer coefficient $\lambda$")
+    ax.set_ylabel("Logit magnitude")
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_u_high_lambda_stress.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase V : 2x2 payoff-geometry counterexample search
+# -------------------------------------------------------------------------
+def vectorized_rollout_2x2_final_probs(
+    R: float,
+    S: float,
+    T: float,
+    P: float,
+    method: str,
+    cfg: Config,
+    grid_size: int,
+    steps: int,
+    peer_coef: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    grid = np.linspace(0.05, 0.95, grid_size)
+    theta1, theta2 = np.meshgrid([logit(float(x)) for x in grid], [logit(float(x)) for x in grid], indexing="ij")
+    payoff = np.array([[R, S], [T, P]], dtype=float)
+    payoff_t = payoff.T
+    for step in range(steps):
+        p1 = sigmoid(theta1)
+        p2 = sigmoid(theta2)
+        base1 = np.zeros_like(p1)
+        base2 = np.zeros_like(p1)
+        q1 = np.zeros_like(p1)
+        q2 = np.zeros_like(p1)
+        h11 = np.zeros_like(p1)
+        h22 = np.zeros_like(p1)
+        cross21 = np.zeros_like(p1)
+        cross12 = np.zeros_like(p1)
+        for c1 in (0, 1):
+            for c2 in (0, 1):
+                prob = (p1 if c1 else 1.0 - p1) * (p2 if c2 else 1.0 - p2)
+                idx1 = 0 if c1 else 1
+                idx2 = 0 if c2 else 1
+                r1 = payoff[idx1, idx2]
+                r2 = payoff_t[idx1, idx2]
+                score1 = c1 - p1
+                score2 = c2 - p2
+                hdiag1 = -p1 * (1.0 - p1)
+                hdiag2 = -p2 * (1.0 - p2)
+                base1 += prob * r1 * score1
+                base2 += prob * r2 * score2
+                q1 += prob * r1 * score2
+                q2 += prob * r2 * score1
+                h11 += prob * r1 * (score1 * score1 + hdiag1)
+                h22 += prob * r2 * (score2 * score2 + hdiag2)
+                cross21 += prob * r2 * score2 * score1
+                cross12 += prob * r1 * score1 * score2
+        own1 = cfg.inner_lr * h11 * base1
+        own2 = cfg.inner_lr * h22 * base2
+        peer1 = cfg.inner_lr * cross21 * q1
+        peer2 = cfg.inner_lr * cross12 * q2
+        update1 = base1.copy()
+        update2 = base2.copy()
+        if method in {"meta_pg", "meta_mapg"}:
+            update1 += cfg.own_coef * own1
+            update2 += cfg.own_coef * own2
+        if method in {"lola_style", "meta_mapg"}:
+            update1 += peer_coef * peer1
+            update2 += peer_coef * peer2
+        lr_step = cfg.lr / ((step + 10.0) ** cfg.lr_power)
+        theta1 = np.clip(theta1 + lr_step * update1, -8.0, 8.0)
+        theta2 = np.clip(theta2 + lr_step * update2, -8.0, 8.0)
+    return sigmoid(theta1), sigmoid(theta2)
+
+
+def vectorized_rollout_2x2(
+    R: float,
+    S: float,
+    T: float,
+    P: float,
+    method: str,
+    cfg: Config,
+    grid_size: int,
+    steps: int,
+    peer_coef: float,
+) -> float:
+    p1, p2 = vectorized_rollout_2x2_final_probs(R, S, T, P, method, cfg, grid_size, steps, peer_coef)
+    return float(np.mean((p1 >= cfg.success_threshold) & (p2 >= cfg.success_threshold)))
+
+
+def run_phase_v(
+    cfg: Config,
+    s_values: list[float],
+    t_values: list[float],
+    grid_size: int,
+    steps: int,
+) -> Path:
+    rows: list[dict] = []
+    for S in s_values:
+        for T in t_values:
+            R = 4.0
+            P = 2.0
+            if 2.0 * R <= T + S:
+                continue
+            pg = vectorized_rollout_2x2(R, S, T, P, "standard_pg", cfg, grid_size, steps, cfg.peer_coef)
+            mm = vectorized_rollout_2x2(R, S, T, P, "meta_mapg", cfg, grid_size, steps, cfg.peer_coef)
+            rows.append(
+                {
+                    "phase": "V",
+                    "R": R,
+                    "S": float(S),
+                    "T": float(T),
+                    "P": P,
+                    "pg_basin_fraction": pg,
+                    "meta_mapg_basin_fraction": mm,
+                    "delta_meta_minus_pg": mm - pg,
+                    "social_cc_minus_dd": 2.0 * (R - P),
+                    "social_cc_minus_miscoord": 2.0 * R - (T + S),
+                }
+            )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_v_payoff_geometry_search.csv"
+    df.to_csv(out, index=False)
+    plot_phase_v(df, cfg)
+    return out
+
+
+def plot_phase_v(df: pd.DataFrame, cfg: Config) -> None:
+    pivot = df.pivot_table(index="S", columns="T", values="delta_meta_minus_pg")
+    worst = df.nsmallest(8, "delta_meta_minus_pg")
+    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.5))
+    ax = axes[0]
+    data = pivot.to_numpy()
+    vmax = max(abs(float(np.nanmin(data))), abs(float(np.nanmax(data))), 1e-12)
+    im = ax.imshow(
+        data,
+        origin="lower",
+        extent=(pivot.columns.min(), pivot.columns.max(), pivot.index.min(), pivot.index.max()),
+        cmap="RdYlGn",
+        norm=TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax),
+        aspect="auto",
+        interpolation="nearest",
+    )
+    plt.colorbar(im, ax=ax, label="Meta-MAPG - PG basin")
+    ax.set_xlabel("Temptation payoff T")
+    ax.set_ylabel("Sucker payoff S")
+    ax.set_title("Payoff-geometry search", fontsize=10)
+    ax = axes[1]
+    labels = [f"S={float(r['S']):.1f}\nT={float(r['T']):.1f}" for _, r in worst.iterrows()]
+    ax.bar(labels, worst["delta_meta_minus_pg"], color="#e45756")
+    ax.axhline(0.0, color="grey", linestyle=":", linewidth=0.8)
+    ax.set_ylabel("Meta-MAPG - PG basin")
+    ax.set_title("Worst discovered cells", fontsize=10)
+    ax.tick_params(axis="x", labelrotation=0, labelsize=7)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_v_payoff_geometry_search.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase W : separatrix margin certificate
+# -------------------------------------------------------------------------
+def signed_grid_margin(grid: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    coords = np.array([(float(p1), float(p2)) for p1 in grid for p2 in grid], dtype=float)
+    labels = mask.astype(bool).ravel()
+    success = coords[labels]
+    failure = coords[~labels]
+    dist_success = np.sqrt(((coords[:, None, :] - success[None, :, :]) ** 2).sum(axis=2)).min(axis=1)
+    dist_failure = np.sqrt(((coords[:, None, :] - failure[None, :, :]) ** 2).sum(axis=2)).min(axis=1)
+    return np.where(labels, dist_failure, -dist_success).reshape(mask.shape)
+
+
+def nearest_mask_value(mask: np.ndarray, grid: np.ndarray, p1: float, p2: float) -> bool:
+    i = int(np.argmin(np.abs(grid - p1)))
+    j = int(np.argmin(np.abs(grid - p2)))
+    return bool(mask[i, j])
+
+
+def run_phase_w(cfg: Config) -> Path:
+    grid = np.load(cfg.outdir / "phase_b_grid.npy")
+    pg = np.load(cfg.outdir / "phase_b_basin_standard_pg.npy")
+    cells = pd.read_csv(cfg.outdir / "phase_r_alignment_cells.csv")
+    margin = signed_grid_margin(grid, pg)
+    cells = cells.sort_values(["init_p1", "init_p2"]).copy()
+    first_lr = step_lr(cfg, 0)
+    cells["pg_signed_margin"] = margin.ravel()
+    cells["boundary_distance"] = np.where(cells["pg_success"] == 1, cells["pg_signed_margin"], -cells["pg_signed_margin"])
+    cells["peer_step_projection_to_cc"] = first_lr * cells["peer_projection_to_cc"]
+    cells["improvement_step_projection_to_cc"] = first_lr * cells["projection_improvement"]
+    cells["peer_margin_ratio"] = cells["peer_step_projection_to_cc"] / np.maximum(cells["boundary_distance"], 1e-12)
+    cells["improvement_margin_ratio"] = cells["improvement_step_projection_to_cc"] / np.maximum(cells["boundary_distance"], 1e-12)
+    fail = cells[cells["pg_success"] == 0]
+    labels = fail["meta_mapg_success"].to_numpy(dtype=int)
+    summary = pd.DataFrame(
+        [
+            {
+                "phase": "W",
+                "first_step_lr": float(first_lr),
+                "n_pg_fail_cells": int(len(fail)),
+                "n_gained_cells": int((fail["meta_mapg_success"] == 1).sum()),
+                "auc_peer_margin_ratio": auc_score(fail["peer_margin_ratio"].to_numpy(), labels),
+                "auc_improvement_margin_ratio": auc_score(fail["improvement_margin_ratio"].to_numpy(), labels),
+                "spearman_peer_margin_ratio": float(fail["peer_margin_ratio"].corr(fail["meta_mapg_success"], method="spearman")),
+                "spearman_improvement_margin_ratio": float(fail["improvement_margin_ratio"].corr(fail["meta_mapg_success"], method="spearman")),
+                "median_boundary_distance_gained": float(fail.loc[fail["meta_mapg_success"] == 1, "boundary_distance"].median()),
+                "median_boundary_distance_not_gained": float(fail.loc[fail["meta_mapg_success"] == 0, "boundary_distance"].median()),
+                "mean_peer_margin_ratio_gained": float(fail.loc[fail["meta_mapg_success"] == 1, "peer_margin_ratio"].mean()),
+                "mean_peer_margin_ratio_not_gained": float(fail.loc[fail["meta_mapg_success"] == 0, "peer_margin_ratio"].mean()),
+            }
+        ]
+    )
+    cells_out = cfg.outdir / "phase_w_margin_cells.csv"
+    summary_out = cfg.outdir / "phase_w_margin_summary.csv"
+    cells.to_csv(cells_out, index=False)
+    summary.to_csv(summary_out, index=False)
+    plot_phase_w(cells, grid, margin, cfg)
+    return summary_out
+
+
+def plot_phase_w(cells: pd.DataFrame, grid: np.ndarray, margin: np.ndarray, cfg: Config) -> None:
+    fig, axes = plt.subplots(1, 3, figsize=(10.4, 3.2))
+    ax = axes[0]
+    vmax = max(abs(float(np.nanmin(margin))), abs(float(np.nanmax(margin))), 1e-12)
+    im = ax.imshow(
+        margin.T,
+        origin="lower",
+        extent=(grid[0], grid[-1], grid[0], grid[-1]),
+        cmap="RdYlGn",
+        norm=TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax),
+        aspect="equal",
+        interpolation="nearest",
+    )
+    plt.colorbar(im, ax=ax, label="signed PG margin")
+    ax.set_xlabel(r"$p_1^0$")
+    ax.set_ylabel(r"$p_2^0$")
+    ax.set_title("PG basin separatrix margin", fontsize=10)
+
+    fail = cells[cells["pg_success"] == 0].copy()
+    gained = fail["meta_mapg_success"] == 1
+    ax = axes[1]
+    ax.scatter(
+        fail.loc[~gained, "boundary_distance"],
+        fail.loc[~gained, "peer_step_projection_to_cc"],
+        s=8,
+        alpha=0.45,
+        color="#777777",
+        label="not gained",
+    )
+    ax.scatter(
+        fail.loc[gained, "boundary_distance"],
+        fail.loc[gained, "peer_step_projection_to_cc"],
+        s=10,
+        alpha=0.7,
+        color=METHOD_COLORS["meta_mapg"],
+        label="gained",
+    )
+    ax.set_xlabel("distance to PG basin")
+    ax.set_ylabel("first-step peer displacement")
+    ax.set_title("Margin versus push", fontsize=10)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=7)
+
+    ax = axes[2]
+    fail["bin"] = pd.qcut(fail["peer_margin_ratio"], q=6, duplicates="drop")
+    binned = fail.groupby("bin", observed=True).agg(
+        x=("peer_margin_ratio", "mean"),
+        p_gain=("meta_mapg_success", "mean"),
+        n=("meta_mapg_success", "size"),
+    )
+    ax.plot(binned["x"], binned["p_gain"], marker="o", linewidth=1.8, color=METHOD_COLORS["meta_mapg"])
+    for _, row in binned.iterrows():
+        ax.text(row["x"], row["p_gain"] + 0.025, str(int(row["n"])), ha="center", fontsize=7)
+    ax.set_xlabel("peer projection / margin")
+    ax.set_ylabel(r"$P(\mathrm{MM\ succeeds})$")
+    ax.set_ylim(-0.02, 1.02)
+    ax.grid(alpha=0.25)
+    ax.set_title("Margin-normalized gain", fontsize=10)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_w_separatrix_margin.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase X : cumulative early alignment
+# -------------------------------------------------------------------------
+def run_phase_x(cfg: Config, k_values: list[int]) -> Path:
+    game = stag_hunt()
+    grid = np.load(cfg.outdir / "phase_b_grid.npy")
+    pg = np.load(cfg.outdir / "phase_b_basin_standard_pg.npy")
+    mm = np.load(cfg.outdir / "phase_b_basin_meta_mapg.npy")
+    checkpoints = sorted(set(k_values))
+    rows: list[dict] = []
+    for i, p1 in enumerate(grid):
+        for j, p2 in enumerate(grid):
+            theta = np.array([[logit(float(p1))], [logit(float(p2))]], dtype=float)
+            target = np.array([1.0 - p1, 1.0 - p2], dtype=float)
+            target_unit = target / max(float(np.linalg.norm(target)), 1e-12)
+            peer_projection = 0.0
+            improvement_projection = 0.0
+            full_projection = 0.0
+            for step in range(1, max(checkpoints) + 1):
+                comps = exact_components_horizon1(theta, game, cfg.inner_lr)
+                base_update = comps.base
+                improvement_update = cfg.own_coef * comps.own + cfg.peer_coef * comps.peer
+                full_update = base_update + improvement_update
+                lr_step = step_lr(cfg, step - 1)
+                peer_projection += lr_step * float(np.dot(probability_delta(theta, cfg.peer_coef * comps.peer), target_unit))
+                improvement_projection += lr_step * float(np.dot(probability_delta(theta, improvement_update), target_unit))
+                full_projection += lr_step * float(np.dot(probability_delta(theta, full_update), target_unit))
+                theta = np.clip(theta + lr_step * full_update, -8.0, 8.0)
+                if step in checkpoints:
+                    probs = cooperation_probs(theta, game)
+                    rows.append(
+                        {
+                            "phase": "X",
+                            "k": int(step),
+                            "init_p1": float(p1),
+                            "init_p2": float(p2),
+                            "pg_success": int(pg[i, j]),
+                            "meta_mapg_success": int(mm[i, j]),
+                            "entered_pg_basin": int(nearest_mask_value(pg, grid, float(probs[0]), float(probs[1]))),
+                            "cumulative_peer_projection": peer_projection,
+                            "cumulative_improvement_projection": improvement_projection,
+                            "cumulative_full_projection": full_projection,
+                        }
+                    )
+    df = pd.DataFrame(rows)
+    summary_rows = []
+    for k, sub in df.groupby("k"):
+        fail = sub[sub["pg_success"] == 0]
+        labels = fail["meta_mapg_success"].to_numpy(dtype=int)
+        gained = fail[fail["meta_mapg_success"] == 1]
+        summary_rows.append(
+            {
+                "phase": "X",
+                "k": int(k),
+                "n_pg_fail_cells": int(len(fail)),
+                "n_gained_cells": int(len(gained)),
+                "auc_cumulative_peer": auc_score(fail["cumulative_peer_projection"].to_numpy(), labels),
+                "auc_cumulative_improvement": auc_score(fail["cumulative_improvement_projection"].to_numpy(), labels),
+                "pg_basin_entry_rate_pg_fail": float(fail["entered_pg_basin"].mean()),
+                "pg_basin_entry_rate_gained": float(gained["entered_pg_basin"].mean()) if len(gained) else float("nan"),
+            }
+        )
+    cells_out = cfg.outdir / "phase_x_cumulative_alignment_cells.csv"
+    summary_out = cfg.outdir / "phase_x_cumulative_alignment_summary.csv"
+    summary = pd.DataFrame(summary_rows)
+    df.to_csv(cells_out, index=False)
+    summary.to_csv(summary_out, index=False)
+    plot_phase_x(summary, cfg)
+    return summary_out
+
+
+def plot_phase_x(summary: pd.DataFrame, cfg: Config) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.2))
+    ax = axes[0]
+    ax.plot(summary["k"], summary["auc_cumulative_peer"], marker="o", linewidth=1.8, label="peer")
+    ax.plot(summary["k"], summary["auc_cumulative_improvement"], marker="s", linewidth=1.6, label="own + peer")
+    ax.axhline(0.5, color="grey", linestyle=":", linewidth=0.9)
+    ax.set_xlabel("Meta-MAPG prefix length K")
+    ax.set_ylabel("AUC on PG-fail cells")
+    ax.set_ylim(0.45, 1.0)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=8)
+    ax = axes[1]
+    ax.plot(summary["k"], summary["pg_basin_entry_rate_pg_fail"], marker="o", linewidth=1.8, label="all PG-fail")
+    ax.plot(summary["k"], summary["pg_basin_entry_rate_gained"], marker="s", linewidth=1.6, label="gained")
+    ax.set_xlabel("Meta-MAPG prefix length K")
+    ax.set_ylabel("nearest-cell PG basin entry")
+    ax.set_ylim(-0.02, 1.02)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_x_cumulative_alignment.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase Y : minimal warm-up crossing time
+# -------------------------------------------------------------------------
+def run_phase_y(cfg: Config, max_steps: int) -> Path:
+    game = stag_hunt()
+    grid = np.load(cfg.outdir / "phase_b_grid.npy")
+    pg = np.load(cfg.outdir / "phase_b_basin_standard_pg.npy")
+    mm = np.load(cfg.outdir / "phase_b_basin_meta_mapg.npy")
+    rows: list[dict] = []
+    for i, p1 in enumerate(grid):
+        for j, p2 in enumerate(grid):
+            if pg[i, j]:
+                rows.append(
+                    {
+                        "phase": "Y",
+                        "init_p1": float(p1),
+                        "init_p2": float(p2),
+                        "pg_success": 1,
+                        "meta_mapg_success": int(mm[i, j]),
+                        "first_pg_basin_step": 0,
+                    }
+                )
+                continue
+            theta = np.array([[logit(float(p1))], [logit(float(p2))]], dtype=float)
+            first_step = -1
+            for step in range(1, max_steps + 1):
+                comps = exact_components_horizon1(theta, game, cfg.inner_lr)
+                update = update_from_components(comps, "meta_mapg", cfg.peer_coef, cfg.own_coef)
+                theta = np.clip(theta + step_lr(cfg, step - 1) * update, -8.0, 8.0)
+                probs = cooperation_probs(theta, game)
+                if nearest_mask_value(pg, grid, float(probs[0]), float(probs[1])):
+                    first_step = step
+                    break
+            rows.append(
+                {
+                    "phase": "Y",
+                    "init_p1": float(p1),
+                    "init_p2": float(p2),
+                    "pg_success": 0,
+                    "meta_mapg_success": int(mm[i, j]),
+                    "first_pg_basin_step": int(first_step),
+                }
+            )
+    df = pd.DataFrame(rows)
+    fail = df[df["pg_success"] == 0]
+    gained = fail[fail["meta_mapg_success"] == 1]
+    crossed = fail[fail["first_pg_basin_step"] > 0]
+    summary = pd.DataFrame(
+        [
+            {
+                "phase": "Y",
+                "max_steps": int(max_steps),
+                "n_pg_fail_cells": int(len(fail)),
+                "n_gained_cells": int(len(gained)),
+                "n_crossed_cells": int(len(crossed)),
+                "n_gained_crossed_cells": int(((gained["first_pg_basin_step"] > 0)).sum()),
+                "cross_rate_pg_fail": float((fail["first_pg_basin_step"] > 0).mean()),
+                "cross_rate_gained": float((gained["first_pg_basin_step"] > 0).mean()),
+                "median_cross_step_gained": float(gained.loc[gained["first_pg_basin_step"] > 0, "first_pg_basin_step"].median()),
+                "median_cross_step_not_gained": float(fail.loc[(fail["meta_mapg_success"] == 0) & (fail["first_pg_basin_step"] > 0), "first_pg_basin_step"].median()),
+            }
+        ]
+    )
+    cells_out = cfg.outdir / "phase_y_min_warmup_cells.csv"
+    summary_out = cfg.outdir / "phase_y_min_warmup_summary.csv"
+    df.to_csv(cells_out, index=False)
+    summary.to_csv(summary_out, index=False)
+    plot_phase_y(df, grid, cfg)
+    return summary_out
+
+
+def plot_phase_y(df: pd.DataFrame, grid: np.ndarray, cfg: Config) -> None:
+    heat = df.sort_values(["init_p1", "init_p2"])["first_pg_basin_step"].to_numpy().reshape(grid.size, grid.size).astype(float)
+    heat[heat < 0] = np.nan
+    cmap = plt.get_cmap("viridis").copy()
+    cmap.set_bad("#eeeeee")
+    fig, axes = plt.subplots(1, 2, figsize=(7.7, 3.2))
+    ax = axes[0]
+    im = ax.imshow(
+        heat.T,
+        origin="lower",
+        extent=(grid[0], grid[-1], grid[0], grid[-1]),
+        cmap=cmap,
+        aspect="equal",
+        interpolation="nearest",
+    )
+    plt.colorbar(im, ax=ax, label="first PG-basin step")
+    ax.set_xlabel(r"$p_1^0$")
+    ax.set_ylabel(r"$p_2^0$")
+    ax.set_title("Minimal Meta-MAPG warm-up", fontsize=10)
+    ax.text(0.07, 0.08, "grey = no crossing", color="#555555", fontsize=7)
+    ax = axes[1]
+    fail = df[df["pg_success"] == 0]
+    bins = np.arange(1, max(2, int(fail["first_pg_basin_step"].max()) + 2)) - 0.5
+    ax.hist(
+        fail.loc[(fail["meta_mapg_success"] == 1) & (fail["first_pg_basin_step"] > 0), "first_pg_basin_step"],
+        bins=bins,
+        alpha=0.75,
+        label="gained",
+        color=METHOD_COLORS["meta_mapg"],
+    )
+    ax.hist(
+        fail.loc[(fail["meta_mapg_success"] == 0) & (fail["first_pg_basin_step"] > 0), "first_pg_basin_step"],
+        bins=bins,
+        alpha=0.55,
+        label="not gained",
+        color="#777777",
+    )
+    ax.set_xlabel("first PG-basin step")
+    ax.set_ylabel("cells")
+    ax.set_title("Crossing-time distribution", fontsize=10)
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_y_min_warmup.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
+# Phase Z : adversarial alignment search over payoff geometry
+# -------------------------------------------------------------------------
+def mean_peer_projection_2x2(R: float, S: float, T: float, P: float, cfg: Config, grid_size: int, pg_mask: np.ndarray) -> tuple[float, float, int]:
+    game = Game("payoff_geometry", np.array([[R, S], [T, P]], dtype=float), np.array([[R, T], [S, P]], dtype=float))
+    grid = np.linspace(0.05, 0.95, grid_size)
+    all_values = []
+    fail_values = []
+    first_lr = step_lr(cfg, 0)
+    for i, p1 in enumerate(grid):
+        for j, p2 in enumerate(grid):
+            theta = np.array([[logit(float(p1))], [logit(float(p2))]], dtype=float)
+            target = np.array([1.0 - p1, 1.0 - p2], dtype=float)
+            target_unit = target / max(float(np.linalg.norm(target)), 1e-12)
+            comps = exact_components_horizon1(theta, game, cfg.inner_lr)
+            projection = first_lr * float(np.dot(probability_delta(theta, cfg.peer_coef * comps.peer), target_unit))
+            all_values.append(projection)
+            if not pg_mask[i, j]:
+                fail_values.append(projection)
+    return float(np.mean(all_values)), float(np.mean(fail_values)) if fail_values else float("nan"), len(fail_values)
+
+
+def run_phase_z(
+    cfg: Config,
+    s_values: list[float],
+    t_values: list[float],
+    grid_size: int,
+    steps: int,
+) -> Path:
+    rows: list[dict] = []
+    for S in s_values:
+        for T in t_values:
+            R = 4.0
+            P = 2.0
+            if 2.0 * R <= T + S:
+                continue
+            pg_p1, pg_p2 = vectorized_rollout_2x2_final_probs(R, S, T, P, "standard_pg", cfg, grid_size, steps, cfg.peer_coef)
+            mm_p1, mm_p2 = vectorized_rollout_2x2_final_probs(R, S, T, P, "meta_mapg", cfg, grid_size, steps, cfg.peer_coef)
+            pg_mask = (pg_p1 >= cfg.success_threshold) & (pg_p2 >= cfg.success_threshold)
+            mm_mask = (mm_p1 >= cfg.success_threshold) & (mm_p2 >= cfg.success_threshold)
+            mean_all, mean_fail, n_fail = mean_peer_projection_2x2(R, S, T, P, cfg, grid_size, pg_mask)
+            delta = float(mm_mask.mean() - pg_mask.mean())
+            rows.append(
+                {
+                    "phase": "Z",
+                    "R": R,
+                    "S": float(S),
+                    "T": float(T),
+                    "P": P,
+                    "pg_basin_fraction": float(pg_mask.mean()),
+                    "meta_mapg_basin_fraction": float(mm_mask.mean()),
+                    "delta_meta_minus_pg": delta,
+                    "mean_peer_projection_all": mean_all,
+                    "mean_peer_projection_pg_fail": mean_fail,
+                    "n_pg_fail_cells": int(n_fail),
+                    "positive_all_projection_but_hurts": int(mean_all > 0.0 and delta < 0.0),
+                    "positive_fail_projection_but_hurts": int(mean_fail > 0.0 and delta < 0.0),
+                    "negative_all_projection_but_helps": int(mean_all < 0.0 and delta > 0.0),
+                }
+            )
+    df = pd.DataFrame(rows)
+    summary = pd.DataFrame(
+        [
+            {
+                "phase": "Z",
+                "n_games": int(len(df)),
+                "n_hurt_games": int((df["delta_meta_minus_pg"] < 0).sum()),
+                "n_positive_all_projection_but_hurts": int(df["positive_all_projection_but_hurts"].sum()),
+                "n_positive_fail_projection_but_hurts": int(df["positive_fail_projection_but_hurts"].sum()),
+                "n_negative_all_projection_but_helps": int(df["negative_all_projection_but_helps"].sum()),
+                "corr_mean_all_delta": float(df["mean_peer_projection_all"].corr(df["delta_meta_minus_pg"], method="spearman")),
+                "corr_mean_fail_delta": float(df["mean_peer_projection_pg_fail"].corr(df["delta_meta_minus_pg"], method="spearman")),
+            }
+        ]
+    )
+    out = cfg.outdir / "phase_z_alignment_adversary.csv"
+    summary_out = cfg.outdir / "phase_z_alignment_adversary_summary.csv"
+    df.to_csv(out, index=False)
+    summary.to_csv(summary_out, index=False)
+    plot_phase_z(df, cfg)
+    return summary_out
+
+
+def plot_phase_z(df: pd.DataFrame, cfg: Config) -> None:
+    fig, axes = plt.subplots(1, 2, figsize=(8.2, 3.2))
+    ax = axes[0]
+    colors = np.where(df["delta_meta_minus_pg"] < 0.0, "#e45756", METHOD_COLORS["meta_mapg"])
+    ax.scatter(df["mean_peer_projection_all"], df["delta_meta_minus_pg"], s=18, alpha=0.75, c=colors)
+    ax.axhline(0.0, color="grey", linestyle=":", linewidth=0.9)
+    ax.axvline(0.0, color="grey", linestyle=":", linewidth=0.9)
+    ax.set_xlabel("mean first-step peer displacement")
+    ax.set_ylabel("Meta-MAPG - PG basin")
+    ax.set_title("Naive alignment stress test", fontsize=10)
+    ax.grid(alpha=0.25)
+    ax = axes[1]
+    pivot = df.pivot_table(index="S", columns="T", values="positive_all_projection_but_hurts")
+    z_cmap = ListedColormap(["#eeeeee", "#e45756"])
+    z_cmap.set_bad("#ffffff")
+    ax.imshow(
+        pivot.to_numpy(),
+        origin="lower",
+        extent=(pivot.columns.min(), pivot.columns.max(), pivot.index.min(), pivot.index.max()),
+        cmap=z_cmap,
+        aspect="auto",
+        interpolation="nearest",
+    )
+    ax.set_xlabel("Temptation payoff T")
+    ax.set_ylabel("Sucker payoff S")
+    ax.set_title("positive local projection, negative basin delta", fontsize=10)
+    ax.text(-0.9, -5.4, "red = counterexample, white = outside search constraint", fontsize=7)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_z_alignment_adversary.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# -------------------------------------------------------------------------
 # Driver
 # -------------------------------------------------------------------------
 def parse_args() -> argparse.Namespace:
@@ -1553,7 +2520,10 @@ def parse_args() -> argparse.Namespace:
         "--phase",
         type=str,
         default="all",
-        choices=["A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "A2", "D2", "M", "N", "O", "P", "Q", "all"],
+        choices=[
+            "A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "A2", "D2",
+            "M", "N", "O", "P", "Q", "R", "T", "U", "V", "W", "X", "Y", "Z", "all",
+        ],
     )
     p.add_argument("--outdir", type=Path, default=Path("artifacts/validation"))
     p.add_argument("--fig-outdir", type=Path, default=Path("figures/validation"))
@@ -1628,6 +2598,26 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--phase-q-batch", type=int, default=192)
     p.add_argument("--phase-q-temptations", type=float, nargs="+", default=[2.2, 2.5, 3.0, 3.5, 3.8])
     p.add_argument("--phase-q-methods", type=str, nargs="+", default=METHODS_FULL)
+    # Phase T
+    p.add_argument("--phase-t-grid", type=int, default=21)
+    p.add_argument("--phase-t-total", type=int, default=140)
+    p.add_argument("--phase-t-warm-steps", type=int, nargs="+", default=[5, 10, 25, 50, 100])
+    # Phase U
+    p.add_argument("--phase-u-lambdas", type=float, nargs="+", default=[0.0, 1.5, 3.0, 5.0, 8.0, 12.0, 20.0, 40.0, 80.0])
+    p.add_argument("--phase-u-grid", type=int, default=21)
+    p.add_argument("--phase-u-total", type=int, default=200)
+    # Phase V
+    p.add_argument("--phase-v-s-values", type=float, nargs="+", default=[-6.0, -5.5, -5.0, -4.5, -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0])
+    p.add_argument("--phase-v-t-values", type=float, nargs="+", default=[-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0, 5.25, 5.5])
+    p.add_argument("--phase-v-grid", type=int, default=15)
+    p.add_argument("--phase-v-steps", type=int, default=100)
+    # Phases X/Y/Z
+    p.add_argument("--phase-x-k-values", type=int, nargs="+", default=[1, 5, 10, 25, 50])
+    p.add_argument("--phase-y-max-steps", type=int, default=100)
+    p.add_argument("--phase-z-s-values", type=float, nargs="+", default=[-6.0, -5.5, -5.0, -4.5, -4.0, -3.5, -3.0, -2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0])
+    p.add_argument("--phase-z-t-values", type=float, nargs="+", default=[-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0, 5.25, 5.5])
+    p.add_argument("--phase-z-grid", type=int, default=15)
+    p.add_argument("--phase-z-steps", type=int, default=100)
     return p.parse_args()
 
 
@@ -1645,7 +2635,10 @@ def main() -> None:
         with log_path.open("a") as fh:
             fh.write(json.dumps(event) + "\n")
 
-    phases = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "A2", "D2", "M", "N", "O", "P", "Q"] if args.phase == "all" else [args.phase]
+    phases = [
+        "A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "A2", "D2",
+        "M", "N", "O", "P", "Q", "R", "T", "U", "V", "W", "X", "Y", "Z",
+    ] if args.phase == "all" else [args.phase]
     log({"event": "start", "phases": phases, "args": vars(args) | {"outdir": str(args.outdir), "fig_outdir": str(args.fig_outdir)}})
 
     if "A" in phases:
@@ -1756,6 +2749,46 @@ def main() -> None:
             args.phase_q_grid, args.phase_q_steps, args.phase_q_batch, args.phase_q_seeds,
         )
         log({"event": "phase_done", "phase": "Q", "csv": str(out)})
+
+    if "R" in phases:
+        log({"event": "phase_start", "phase": "R"})
+        out = run_phase_r(cfg)
+        log({"event": "phase_done", "phase": "R", "csv": str(out)})
+
+    if "T" in phases:
+        log({"event": "phase_start", "phase": "T"})
+        out = run_phase_t(cfg, args.phase_t_grid, args.phase_t_total, args.phase_t_warm_steps)
+        log({"event": "phase_done", "phase": "T", "csv": str(out)})
+
+    if "U" in phases:
+        log({"event": "phase_start", "phase": "U"})
+        out = run_phase_u(cfg, args.phase_u_lambdas, args.phase_u_grid, args.phase_u_total)
+        log({"event": "phase_done", "phase": "U", "csv": str(out)})
+
+    if "V" in phases:
+        log({"event": "phase_start", "phase": "V"})
+        out = run_phase_v(cfg, args.phase_v_s_values, args.phase_v_t_values, args.phase_v_grid, args.phase_v_steps)
+        log({"event": "phase_done", "phase": "V", "csv": str(out)})
+
+    if "W" in phases:
+        log({"event": "phase_start", "phase": "W"})
+        out = run_phase_w(cfg)
+        log({"event": "phase_done", "phase": "W", "csv": str(out)})
+
+    if "X" in phases:
+        log({"event": "phase_start", "phase": "X"})
+        out = run_phase_x(cfg, args.phase_x_k_values)
+        log({"event": "phase_done", "phase": "X", "csv": str(out)})
+
+    if "Y" in phases:
+        log({"event": "phase_start", "phase": "Y"})
+        out = run_phase_y(cfg, args.phase_y_max_steps)
+        log({"event": "phase_done", "phase": "Y", "csv": str(out)})
+
+    if "Z" in phases:
+        log({"event": "phase_start", "phase": "Z"})
+        out = run_phase_z(cfg, args.phase_z_s_values, args.phase_z_t_values, args.phase_z_grid, args.phase_z_steps)
+        log({"event": "phase_done", "phase": "Z", "csv": str(out)})
 
     log({"event": "end"})
 

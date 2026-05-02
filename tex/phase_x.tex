@@ -1,0 +1,27 @@
+This phase checks whether the one-step alignment certificate remains valid over the finite early-time window that actually moves policies. For $K\in\{1,5,10,25,50\}$ we accumulate learning-rate-weighted Meta-MAPG prefix projections and ask whether the prefix predicts final Meta-MAPG gains among cells where PG fails.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.74\linewidth]{phase_x_cumulative_alignment}
+  \caption{Cumulative early-alignment test. Left: AUC for predicting Meta-MAPG gains among PG-fail cells. Right: fraction of PG-fail cells whose Meta-MAPG prefix lands in the nearest-cell PG basin.}
+  \label{fig:phase-x-cumulative}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lccc}
+  \toprule
+  $K$ & Peer AUC & Entry rate, PG-fail & Entry rate, gained \\
+  \midrule
+  1 & 0.741 & 3.3\% & 14.7\% \\
+  5 & 0.771 & 5.8\% & 25.9\% \\
+  10 & 0.804 & 10.2\% & 45.6\% \\
+  25 & 0.864 & 17.8\% & 77.1\% \\
+  50 & 0.888 & 21.4\% & 88.6\% \\
+  \bottomrule
+\end{tabular}
+  \caption{Finite-prefix alignment and empirical PG-basin entry.}
+  \label{tab:phase-x-cumulative}
+\end{table}
+
+The strongest peer-prefix AUC occurs at $K=50$ with AUC 0.888. The largest gained-cell PG-entry rate occurs at $K=50$ and is 88.6\%. This tests a finite-time version of the theory: cumulative aligned motion should carry policies across the empirical PG separatrix.

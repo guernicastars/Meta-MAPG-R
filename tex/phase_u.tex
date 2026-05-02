@@ -1,0 +1,31 @@
+This phase tries to break the coefficient story by removing the logit clip and running exact deterministic Meta-MAPG with much larger peer coefficients than the main report. Divergence is declared if any logit exceeds 50 in magnitude or becomes non-finite.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.82\linewidth]{phase_u_high_lambda_stress}
+  \caption{High-$\lambda$ no-clip stress test in tabular Stag Hunt. The left panel tracks basin fraction and divergence; the right panel tracks logit magnitudes.}
+  \label{fig:phase-u-stress}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lccc}
+  \toprule
+  $\lambda$ & Coop.\ basin & Divergence & Median max $|\theta|$ \\
+  \midrule
+  0.0 & 27.4\% & 0.0\% & 4.62 \\
+  1.5 & 43.5\% & 0.0\% & 4.54 \\
+  3.0 & 54.4\% & 0.0\% & 4.29 \\
+  5.0 & 64.4\% & 0.0\% & 4.17 \\
+  8.0 & 72.8\% & 0.0\% & 4.27 \\
+  12.0 & 79.8\% & 0.0\% & 4.40 \\
+  20.0 & 86.8\% & 0.0\% & 4.60 \\
+  40.0 & 93.9\% & 0.0\% & 4.88 \\
+  80.0 & 97.7\% & 0.0\% & 5.20 \\
+  \bottomrule
+\end{tabular}
+  \caption{No-clip high-coefficient stress summary.}
+  \label{tab:phase-u-stress}
+\end{table}
+
+At the largest tested coefficient, $\lambda=80.0$, the divergence rate is 0.0\%. In this tabular Stag Hunt setup, high $\lambda$ does not break by numerical explosion; a stronger counterexample must change the game geometry rather than only increasing the coefficient.

@@ -1,0 +1,28 @@
+This phase asks for the minimal Meta-MAPG warm-up needed to enter the ordinary PG basin. Starting from every Phase~B grid cell where PG fails, we run exact Meta-MAPG updates and record the first step whose nearest grid cell lies inside the PG success basin.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.74\linewidth]{phase_y_min_warmup}
+  \caption{Minimal warm-up crossing time. Left: first Meta-MAPG step that reaches the empirical PG basin. Right: crossing-time distribution split by whether the cell is ultimately gained by Meta-MAPG.}
+  \label{fig:phase-y-min-warmup}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+\begin{tabular}{lc}
+  \toprule
+  Metric & Value \\
+  \midrule
+  PG-fail cells & 1927 \\
+  Meta-MAPG gained cells & 428 \\
+  PG-fail cells crossing PG basin & 427 \\
+  Gained cells crossing PG basin & 385 \\
+  Crossing rate among gained cells & 90.0\% \\
+  Median crossing step among gained cells & 8.0 \\
+\bottomrule
+\end{tabular}
+  \caption{Minimal warm-up crossing summary.}
+  \label{tab:phase-y-min-warmup}
+\end{table}
+
+This is the most direct operational form of the basin-entry claim: Meta-MAPG should only be needed until the trajectory crosses the ordinary PG separatrix. Cells that never cross within the tested window are candidates for either longer warm-up, weaker alignment, or a missing condition in the current theory.
