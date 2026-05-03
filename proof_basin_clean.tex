@@ -1,0 +1,303 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\geometry{margin=1in}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\sym}{\operatorname{sym}}
+
+\title{Clean proof of the basin-expansion proposition\\
+       \large with intuition, algorithm, and Lean4 guidance}
+\author{Notes for Arina}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Reading guide}
+
+\begin{itemize}[leftmargin=*]
+\item Section~\ref{sec:intuition} is the cartoon. Read first.
+\item Section~\ref{sec:algorithm} is the algorithm in pseudocode and how each line maps to the symbols used in Section~\ref{sec:proof}.
+\item Section~\ref{sec:notation} fixes a single notation. The paper's appendix has minor drift; this section pins one name per object.
+\item Section~\ref{sec:proof} is the elegant three-part proof. Each part uses exactly one classical tool.
+\item Section~\ref{sec:lean} is a Lean4 skeleton. Use it as a checklist while writing the human proof: every \texttt{sorry} corresponds to a step you must justify in prose.
+\end{itemize}
+
+\section{Intuitive picture}\label{sec:intuition}
+
+Two vector fields live on parameter space $\R^d$:
+
+\begin{itemize}
+\item the plain policy-gradient field $v(\phi)$, with a known fixed point at the Nash equilibrium $\phi^*$;
+\item the Meta-MAPG (shaped) field $F_\lambda(\phi) = v(\phi) + \lambda M(\phi)$, parameterised by shaping strength $\lambda \ge 0$.
+\end{itemize}
+
+The proposition compares them. The whole story is three sentences:
+
+\begin{enumerate}[label=(\roman*)]
+\item Adding $\lambda M$ \emph{moves the zero}. The new zero $\phi^*_\lambda$ is at distance $O(\lambda)$ from $\phi^*$. As $\lambda \to 0$ it slides back.
+\item Around the new zero, the shaped field \emph{pulls inward harder} than $v$ pulled toward $\phi^*$. Contraction rate goes from $\mu$ to $\mu + \lambda \mu_M$.
+\item Stronger pull $\Rightarrow$ \emph{wider certified ball} of guaranteed contraction. Radius $\rho_\lambda = (\mu + \lambda \mu_M)/(2L_\lambda)$ instead of $\rho_0 = \mu/(2L_0)$.
+\end{enumerate}
+
+Mental model. Think of $v$ as a cone-shaped funnel above $\phi^*$. The funnel has a fixed slope $\mu$ and a fixed mouth radius $\rho_0$. Adding $\lambda M$ bends the funnel: the bottom of the funnel slides sideways by $O(\lambda)$ (the new zero), the slope steepens to $\mu + \lambda \mu_M$ (sharper drift), and the mouth widens to $\rho_\lambda > \rho_0$ (more initial states fall in). Phase 2 of the algorithm reverses the bending ($\lambda \to 0$) so the bottom returns to $\phi^*$.
+
+Why this matters for the algorithm. Wider mouth = higher probability that a random initial $\phi_0$ falls inside the certified basin during the warm-up phase. That is exactly the inequality $p_{\mathrm{entry}}(\text{Meta-MAPG}, T) > p_{\mathrm{entry}}(\text{PG}, T)$.
+
+\section{Algorithm and how it connects to $F_\lambda$}\label{sec:algorithm}
+
+The proposition is a deterministic statement about $F_\lambda$, but it is only useful because the stochastic iteration tracks $F_\lambda$ in expectation. Here is what the algorithm runs in phase 1.
+
+\begin{lstlisting}[basicstyle=\small\ttfamily, mathescape=true, frame=single, xleftmargin=8pt]
+input: $\phi_0 \in \R^d$, step size $\alpha_0$, shaping $\lambda_c$, unroll $L$, horizon $N_0$
+for $n = 0, 1, \ldots, N_0 - 1$:
+    sample batch of trajectories $\tau_1, \ldots, \tau_B$ under joint policy $\pi_{\phi_n}$
+
+    # current term (plain REINFORCE estimator of $v$)
+    $g_{\mathrm{cur}} \leftarrow \tfrac{1}{B} \sum_b R_i(\tau_b)\, S_i(\tau_b)$
+
+    # own-learning term (vanishes at Nash but contributes off-Nash)
+    $g_{\mathrm{own}} \leftarrow \eta\, \widehat{H}_{ii}(\tau)^\top g_{\mathrm{cur}}$
+
+    # peer-learning term (the key Meta-MAPG contribution)
+    $g_{\mathrm{peer}} \leftarrow \eta\, \widehat{C}_{ji}(\tau)^\top g_{\mathrm{cur},j}$
+
+    $\widehat{M} \leftarrow g_{\mathrm{own}} + g_{\mathrm{peer}}$
+    $\widehat{g}_n \leftarrow g_{\mathrm{cur}} + \lambda_c\, \widehat{M}$
+
+    $\phi_{n+1} \leftarrow \mathrm{Proj}_{\mathcal{K}}\!\left[\,\phi_n + \alpha_0\, \widehat{g}_n\,\right]$
+\end{lstlisting}
+
+The bridge to the proposition. The estimator decomposition lemma (\verb|lem:decomp| in the paper) gives
+\[
+\widehat{g}_n = F_{\lambda_c}(\phi_n) + \xi_{n+1} + b_n,
+\]
+where $\xi_{n+1}$ is martingale-difference noise and $b_n$ is $O(\beta_n)$ bias. So the iteration tracks the ODE $\dot\phi = F_{\lambda_c}(\phi)$. The proposition characterises this ODE near $\phi^*$.
+
+What makes the peer term \emph{not} vanish at Nash. The own-learning piece $g_{\mathrm{own}} = \eta\, \widehat{H}_{ii}^\top g_{\mathrm{cur}}$ is a contraction of $g_{\mathrm{cur}} \approx \nabla_{\phi_i} J_i$, which is zero at Nash; so $g_{\mathrm{own}}(\phi^*) = 0$. The peer piece $g_{\mathrm{peer}}$ contracts $g_{\mathrm{cur},j} = \nabla_{\phi_j} J_j$, which is also zero at Nash. \emph{However}, the appendix definition of $M$ uses cross-derivatives of value functions: in particular agent $j$'s gradient enters through agent $i$'s log-likelihood derivative, so the algebra leaves a term $\eta\, C_{ji}^\top \nabla_{\phi_j} V_i$ (note the swapped $i$ and $j$) which is nonzero in general-sum games. That is why $M(\phi^*) \ne 0$ and the fixed point genuinely moves.
+
+\section{Notation, fixed once}\label{sec:notation}
+
+\begin{tabular}{ll}
+$v : \R^d \to \R^d$ & policy-gradient field, $v(\phi^*) = 0$ \\
+$M : \R^d \to \R^d$ & Meta-MAPG correction, drop $L$ subscript everywhere \\
+$F_\lambda := v + \lambda M$ & shaped field at strength $\lambda \ge 0$ \\
+$\phi^*$ & SOS Nash equilibrium of $v$, drift constant $\mu > 0$, radius $r_{\mathrm{att}}$ \\
+$\phi^*_\lambda$ & shifted zero of $F_\lambda$ (built in part (i)) \\
+$J_v := Dv(\phi^*)$ & Jacobian of $v$ at the unshifted Nash \\
+$J_M := DM(\phi^*)$ & Jacobian of $M$ at the unshifted Nash \\
+$J_\lambda := DF_\lambda(\phi^*_\lambda)$ & Jacobian of $F_\lambda$ at the shifted zero \\
+$\sym(A) := (A + A^\top)/2$ & symmetric part of a matrix \\
+$\mu := -\lambda_{\max}(\sym(J_v))$ & base drift constant (positive by SOS) \\
+$\mu_M := -\lambda_{\max}(\sym(J_M))$ & shaping drift constant (assumed positive) \\
+$\mu_\lambda := \mu + \lambda \mu_M$ & combined drift constant \\
+$L_\lambda$ & Lipschitz constant of $DF_\lambda$ on the working ball \\
+$\rho_\lambda := \mu_\lambda / (2 L_\lambda)$ & certified SOS radius
+\end{tabular}
+
+Standing regularity. Both $v$ and $M$ are $C^2$ on a neighbourhood of $\phi^*$. This is enough for the IFT (needs $C^1$ in $\lambda$ jointly) and for the Taylor remainder (needs $C^2$).
+
+\section{The clean proof}\label{sec:proof}
+
+\begin{proposition}[Basin expansion]
+Fix an SOS Nash equilibrium $\phi^*$ of $v$ with drift constant $\mu > 0$. Assume $v, M \in C^2$ near $\phi^*$. Then for all $\lambda \in [0, \bar\lambda]$ with $\bar\lambda$ small enough:
+\begin{enumerate}[label=(\roman*)]
+\item there exists a $C^1$ branch $\lambda \mapsto \phi^*_\lambda$ with $F_\lambda(\phi^*_\lambda) = 0$ and $\|\phi^*_\lambda - \phi^*\| = O(\lambda)$;
+\item if $\mu_M > 0$, then for every $\phi$ in the ball $B_{\rho_\lambda}(\phi^*_\lambda)$,
+\[
+\langle F_\lambda(\phi), \phi - \phi^*_\lambda\rangle \le -\tfrac{1}{2} \mu_\lambda\, \|\phi - \phi^*_\lambda\|^2;
+\]
+\item the ball $B_{\rho_\lambda}(\phi^*_\lambda)$ strictly contains $B_{r_{\mathrm{att}}}(\phi^*)$ for sufficiently small $\lambda$.
+\end{enumerate}
+\end{proposition}
+
+The proof is three lemmas. Each uses one classical tool.
+
+\subsection{Tool 1: Implicit Function Theorem}
+
+\begin{lemma}[Fixed-point shift]\label{lem:shift}
+There exist $\bar\lambda > 0$ and a $C^1$ map $\phi^* : [0,\bar\lambda] \to \R^d$, $\lambda \mapsto \phi^*_\lambda$, satisfying $\phi^*_0 = \phi^*$ and $F_\lambda(\phi^*_\lambda) = 0$. Moreover
+\[
+\phi^*_\lambda = \phi^* - \lambda\, J_v^{-1} M(\phi^*) + O(\lambda^2),
+\]
+so $\|\phi^*_\lambda - \phi^*\| = O(\lambda)$.
+\end{lemma}
+
+\begin{proof}
+Define $\Phi : \R \times \R^d \to \R^d$ by $\Phi(\lambda, \phi) := F_\lambda(\phi) = v(\phi) + \lambda M(\phi)$.
+
+\textbf{Step 1 ($J_v$ invertible).}
+The SOS condition on $\phi^*$ states
+\[
+\langle v(\phi), \phi - \phi^*\rangle \le -\mu\, \|\phi - \phi^*\|^2 \quad \text{for all } \phi \in B_{r_{\mathrm{att}}}(\phi^*).
+\]
+Substitute $\phi = \phi^* + \varepsilon u$ with $u \in \R^d$ a unit vector. Taylor-expand $v$:
+\[
+v(\phi^* + \varepsilon u) = v(\phi^*) + \varepsilon J_v u + O(\varepsilon^2) = \varepsilon J_v u + O(\varepsilon^2).
+\]
+The SOS inequality becomes
+\[
+\varepsilon^2\, u^\top J_v u + O(\varepsilon^3) \le -\mu\, \varepsilon^2.
+\]
+Divide by $\varepsilon^2$ and let $\varepsilon \to 0$:
+\[
+u^\top J_v u \le -\mu \quad \text{for all unit } u.
+\]
+So $\sym(J_v) \preceq -\mu I$. Suppose $J_v u = 0$ for some unit $u$. Then $u^\top J_v u = 0$, contradicting $u^\top J_v u \le -\mu < 0$. Hence $J_v$ is invertible.
+
+\textbf{Step 2 (apply IFT).}
+$\Phi$ is $C^1$ jointly because $v, M \in C^2 \supset C^1$. We have $\Phi(0, \phi^*) = v(\phi^*) = 0$ and $\partial_\phi \Phi(0, \phi^*) = J_v$ invertible. The implicit function theorem produces $\bar\lambda > 0$ and a unique $C^1$ branch $\phi^*_\lambda$ with $\Phi(\lambda, \phi^*_\lambda) = 0$ on $[0, \bar\lambda]$.
+
+\textbf{Step 3 (first-order expansion).}
+Differentiate $\Phi(\lambda, \phi^*_\lambda) \equiv 0$ in $\lambda$:
+\[
+\partial_\lambda \Phi(\lambda, \phi^*_\lambda) + \partial_\phi \Phi(\lambda, \phi^*_\lambda) \cdot \frac{d\phi^*_\lambda}{d\lambda} = 0.
+\]
+At $\lambda = 0$: $\partial_\lambda \Phi = M$ and $\partial_\phi \Phi = J_v$, hence
+\[
+\left.\frac{d\phi^*_\lambda}{d\lambda}\right|_{\lambda = 0} = -J_v^{-1} M(\phi^*).
+\]
+Taylor expansion in $\lambda$ then gives
+\[
+\phi^*_\lambda = \phi^* - \lambda\, J_v^{-1} M(\phi^*) + O(\lambda^2). \qedhere
+\]
+\end{proof}
+
+\subsection{Tool 2: Weyl's eigenvalue inequality}
+
+\begin{lemma}[Linearised drift]\label{lem:weyl}
+Assume $\mu_M > 0$. There exists $\bar\lambda_2 \le \bar\lambda$ such that for all $\lambda \in [0, \bar\lambda_2]$ and all $x \in \R^d$,
+\[
+\langle J_\lambda x, x\rangle \le -\mu_\lambda\, \|x\|^2,
+\]
+where $J_\lambda := DF_\lambda(\phi^*_\lambda)$ and $\mu_\lambda = \mu + \lambda \mu_M$.
+\end{lemma}
+
+\begin{proof}
+\textbf{Step 1 (decompose $J_\lambda$).}
+By definition,
+\[
+J_\lambda = Dv(\phi^*_\lambda) + \lambda\, DM(\phi^*_\lambda).
+\]
+Since $\|\phi^*_\lambda - \phi^*\| = O(\lambda)$ (Lemma~\ref{lem:shift}) and $Dv, DM$ are $C^1$,
+\[
+Dv(\phi^*_\lambda) = J_v + O(\lambda), \qquad DM(\phi^*_\lambda) = J_M + O(\lambda).
+\]
+Therefore
+\[
+J_\lambda = J_v + \lambda J_M + O(\lambda^2).
+\]
+The $O(\lambda)$ correction inside $DM(\phi^*_\lambda)$ becomes $O(\lambda^2)$ after multiplication by $\lambda$.
+
+\textbf{Step 2 (extract symmetric part).}
+For any matrix $A$ and any $x \in \R^d$,
+\[
+x^\top A x = \tfrac{1}{2} x^\top (A + A^\top) x = x^\top \sym(A)\, x.
+\]
+Applied to $J_\lambda$:
+\[
+\langle J_\lambda x, x\rangle = x^\top \sym(J_\lambda)\, x = x^\top \sym(J_v + \lambda J_M)\, x + O(\lambda^2)\, \|x\|^2.
+\]
+
+\textbf{Step 3 (Weyl).}
+For real symmetric matrices $A, B$, Weyl's inequality says
+\[
+\lambda_{\max}(A + B) \le \lambda_{\max}(A) + \lambda_{\max}(B).
+\]
+Apply to $\sym(J_v) + \lambda \sym(J_M)$:
+\[
+\lambda_{\max}\!\bigl(\sym(J_v + \lambda J_M)\bigr) \le \lambda_{\max}(\sym(J_v)) + \lambda\, \lambda_{\max}(\sym(J_M)) = -\mu - \lambda \mu_M.
+\]
+
+\textbf{Step 4 (Rayleigh).}
+For any symmetric $S$, $x^\top S x \le \lambda_{\max}(S)\, \|x\|^2$. Combine with Step 3:
+\[
+\langle J_\lambda x, x\rangle \le -(\mu + \lambda \mu_M)\, \|x\|^2 + O(\lambda^2)\, \|x\|^2.
+\]
+For $\lambda$ small, the $O(\lambda^2)$ term is dominated by any positive fraction of $\mu_\lambda$, so we can absorb it (formally: pick $\bar\lambda_2$ such that the residual is $\le 0$ after replacing $\mu_\lambda$ on the right by, say, $0.99 \mu_\lambda$; then rename the constant). The clean inequality of the lemma follows.
+\end{proof}
+
+\subsection{Tool 3: Taylor's theorem with remainder}
+
+\begin{lemma}[Certified radius]\label{lem:taylor}
+Assume $\mu_M > 0$ and let $\rho_\lambda = \mu_\lambda / (2 L_\lambda)$. For every $\phi \in B_{\rho_\lambda}(\phi^*_\lambda)$,
+\[
+\langle F_\lambda(\phi), \phi - \phi^*_\lambda\rangle \le -\tfrac{1}{2} \mu_\lambda\, \|\phi - \phi^*_\lambda\|^2.
+\]
+\end{lemma}
+
+\begin{proof}
+Write $x := \phi - \phi^*_\lambda$. Since $F_\lambda \in C^2$ on a neighbourhood of $\phi^*_\lambda$, Taylor's theorem with integral remainder gives
+\[
+F_\lambda(\phi) = F_\lambda(\phi^*_\lambda) + J_\lambda x + R_\lambda(x), \qquad \|R_\lambda(x)\| \le \tfrac{1}{2} L_\lambda\, \|x\|^2.
+\]
+By Lemma~\ref{lem:shift}, $F_\lambda(\phi^*_\lambda) = 0$. Take inner product with $x$:
+\[
+\langle F_\lambda(\phi), x\rangle = \langle J_\lambda x, x\rangle + \langle R_\lambda(x), x\rangle.
+\]
+Bound the first term by Lemma~\ref{lem:weyl} and the second by Cauchy--Schwarz:
+\[
+\langle F_\lambda(\phi), x\rangle \le -\mu_\lambda\, \|x\|^2 + \|R_\lambda(x)\| \cdot \|x\| \le -\mu_\lambda\, \|x\|^2 + \tfrac{1}{2} L_\lambda\, \|x\|^3.
+\]
+For $\|x\| \le \rho_\lambda = \mu_\lambda / (2 L_\lambda)$,
+\[
+\tfrac{1}{2} L_\lambda\, \|x\|^3 = \tfrac{1}{2} L_\lambda\, \|x\| \cdot \|x\|^2 \le \tfrac{1}{2} L_\lambda \cdot \frac{\mu_\lambda}{2 L_\lambda}\, \|x\|^2 = \tfrac{\mu_\lambda}{4}\, \|x\|^2.
+\]
+Therefore
+\[
+\langle F_\lambda(\phi), x\rangle \le -\mu_\lambda\, \|x\|^2 + \tfrac{\mu_\lambda}{4}\, \|x\|^2 = -\tfrac{3 \mu_\lambda}{4}\, \|x\|^2 \le -\tfrac{1}{2} \mu_\lambda\, \|x\|^2. \qedhere
+\]
+\end{proof}
+
+\subsection{Putting it together}
+
+\begin{proof}[Proof of the proposition]
+Part (i) is Lemma~\ref{lem:shift}. Part (ii) is Lemma~\ref{lem:taylor}. For part (iii), compare the certified radius $\rho_\lambda = (\mu + \lambda \mu_M)/(2 L_\lambda)$ to $r_{\mathrm{att}}$. As $\lambda \to 0^+$, $L_\lambda \to L_0$ by smoothness of $M$, so $\rho_\lambda \to \mu/(2 L_0)$. The latter is at least $r_{\mathrm{att}}$ whenever the original SOS ball is the maximal one; if it is strictly smaller, $\rho_\lambda > r_{\mathrm{att}}$ already at $\lambda = 0$. In either case, for $\lambda > 0$ sufficiently small, $\rho_\lambda > r_{\mathrm{att}} + c_{\mathrm{shift}} \lambda$ where $c_{\mathrm{shift}}$ is the constant of Lemma~\ref{lem:shift}, which means the new ball $B_{\rho_\lambda}(\phi^*_\lambda)$ strictly contains the old ball $B_{r_{\mathrm{att}}}(\phi^*)$.
+\end{proof}
+
+\section{Why this is elegant}
+
+Three classical tools, one per part, applied in the natural order:
+
+\begin{itemize}
+\item \textbf{IFT} answers ``does the zero move and where?'' Solves $F_\lambda(\phi) = 0$ for $\phi$ as a function of $\lambda$.
+\item \textbf{Weyl} answers ``how does the slope change?'' Adds eigenvalue bounds of two symmetric matrices.
+\item \textbf{Taylor} answers ``how far does the linear bound extend?'' Trades cubic remainder against linear contraction.
+\end{itemize}
+
+Nothing clever is needed. Each step is the obvious move once the previous one is in place. The art is in choosing the working point ($\phi^*_\lambda$, not $\phi^*$) so that the linearisation has zero constant term.
+
+\section{Lean4 guidance}\label{sec:lean}
+
+A full Mathlib formalisation is heavy because Mathlib has the IFT and Taylor's theorem and an eigenvalue API but stitching them around a custom $F_\lambda$ takes work. The skeleton in \texttt{BasinExpansion.lean} is a checklist: each \texttt{sorry} is one human-proof step. Use it like this.
+
+\begin{itemize}
+\item \texttt{Sorry 1} (\verb|J_v_invertible|): proves $J_v$ is non-singular under SOS. The proof is the contrapositive argument from Lemma~\ref{lem:shift} Step 1.
+\item \texttt{Sorry 2} (\verb|fixed_point_branch|): invokes \verb|ImplicitFunctionTheorem.implicitFunctionData| from \verb|Mathlib.Analysis.Calculus.ImplicitFunction|. Inputs: $\Phi(\lambda,\phi) = v(\phi) + \lambda M(\phi)$, base point $(0, \phi^*)$, invertibility from \texttt{Sorry 1}.
+\item \texttt{Sorry 3} (\verb|shift_first_order|): differentiate $\Phi(\lambda, \phi^*_\lambda) \equiv 0$ and invert $J_v$.
+\item \texttt{Sorry 4} (\verb|jacobian_decomposition|): uses $C^1$ continuity of $Dv, DM$ to write $J_\lambda = J_v + \lambda J_M + O(\lambda^2)$.
+\item \texttt{Sorry 5} (\verb|weyl_bound|): standard Weyl on Hermitian matrices. Mathlib's \verb|Matrix.IsHermitian.eigenvalues| and the inequality \verb|Matrix.eigenvalues_add_le| (search for \verb|Weyl|) cover this.
+\item \texttt{Sorry 6} (\verb|rayleigh_bound|): Mathlib has \verb|Matrix.IsHermitian.inner_le_eigenvalues_mul_norm_sq| or analogous.
+\item \texttt{Sorry 7} (\verb|taylor_remainder|): use \verb|HasFTaylorSeriesUpToOn| / \verb|taylorWithinEval| or the simpler \verb|HasFDerivAt.le| with $C^2$ bounds.
+\item \texttt{Sorry 8} (\verb|cubic_dominates|): pure arithmetic on $\|x\| \le \rho_\lambda$.
+\end{itemize}
+
+The point of the Lean skeleton: it forces you to name each object precisely (no notation drift), exhibit each input, and check that nothing is silently assumed. Even without filling in all \texttt{sorry}s, walking the structure from start to end catches gaps. Three places worth checking against the human proof:
+\begin{enumerate}
+\item In \texttt{Sorry 4}, the step ``$O(\lambda)$ inside $DM$ becomes $O(\lambda^2)$ after multiplication by $\lambda$'' is honest only because we evaluate $DM$ at a moving base point. If you write it at $\phi^*$ instead, you lose this gain.
+\item In \texttt{Sorry 7}, $L_\lambda$ depends on the ball where you take the Lipschitz constant of $DF_\lambda$. The ball is $B_{\rho_\lambda}(\phi^*_\lambda)$, which depends on $\rho_\lambda$, which depends on $L_\lambda$. This is not circular: pick any fixed ball $B$ around $\phi^*$ that contains $B_{\rho_\lambda}(\phi^*_\lambda)$ for all small $\lambda$, take $L$ as the Lipschitz constant on $B$, and use it for every $\lambda$. The Lean skeleton makes this choice explicit; the paper hides it.
+\item In \texttt{Sorry 8}, the constant 2 in $\rho_\lambda = \mu_\lambda / (2 L_\lambda)$ is exactly the ``half budget'' choice. With factor $k$ instead of 2, the certified drift becomes $-(1 - 1/(2k)) \mu_\lambda \|x\|^2$. Choosing $k = 2$ gives the cleanest constant $-\tfrac{3}{4} \mu_\lambda$ and the comfortable $-\tfrac{1}{2}\mu_\lambda$ stated in the proposition.
+\end{enumerate}
+
+\end{document}

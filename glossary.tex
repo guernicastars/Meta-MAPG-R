@@ -1,0 +1,123 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{geometry}
+\usepackage{longtable}
+
+\geometry{margin=1in}
+
+\title{meta mapg}
+\author{Arina Redina}
+\date{April 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Glossary}
+
+\begin{longtable}{@{} p{4.5cm} p{9.5cm} @{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+\endfirsthead
+
+\multicolumn{2}{l}{\textit{Continued from previous page}} \\[2pt]
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{2}{r}{\textit{Continued on next page}} \\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
+%--- Stochastic game components ---
+\multicolumn{2}{@{}l}{\textit{Stochastic game components}} \\[2pt]
+$\mathcal{G}$                          & Stochastic game tuple \\
+$\mathcal{S}$                          & Finite set of states \\
+$\mathcal{N}$                          & Finite set of agents \\
+$\mathcal{A}_i$                        & Action set of agent $i$ \\
+$\mathcal{A}$                          & Joint action space \\
+$\mathcal{A}_{-i}$                     & Action space of all agents except $i$ \\
+$R_i$                                  & Reward function of agent $i$, bounded by $R_{\max}$ \\
+$P(s' \mid s, \alpha)$                 & Transition probability \\
+$\gamma_{\mathrm{disc}}$               & Discount factor \\
+$\rho$                                 & Initial state distribution \\[3pt]
+
+\midrule
+%--- Policies and parameters ---
+\multicolumn{2}{@{}l}{\textit{Policies and parameters}} \\[2pt]
+$\pi_{\phi_i}(a_i \mid s)$             & Policy of agent $i$ \\
+$\phi_i \in R^{d_i}$                   & Policy parameter of agent $i$ \\
+$\phi_{-i}$                            & Policy parameters of all agents except $i$ \\
+$\phi = (\phi_i)_{i=1}^{N} \in R^{d}$ & Joint policy parameter \\
+$\phi^*$                               & Nash equilibrium policy \\
+$\phi^*_\lambda$                       & Shifted fixed point under shaping strength $\lambda$ \\
+$\phi_0$                               & Initial policy parameter \\
+$\phi_n$                               & Iterate at step $n$ \\
+$\mathcal{K}$                          & Compact constraint set \\[3pt]
+
+\midrule
+%--- Value functions and gradients ---
+\multicolumn{2}{@{}l}{\textit{Value functions and gradients}} \\[2pt]
+$V_{i,s}(\phi)$                        & Value function of agent $i$ from state $s$ \\
+$V_{i,\rho}(\phi)$                     & Value function of agent $i$ under initial state distribution $\rho$ \\
+$G^i(\tau)$                            & Discounted return of agent $i$ along trajectory $\tau$ \\
+$\tau = (s_t, a_t)_{t \geq 0}$         & Trajectory \\
+$v(\phi)$                              & Policy-gradient update direction \\
+$S_i(\tau)$                            & Score function $\nabla_{\phi_i} \log p_\phi(\tau)$ \\
+$H_i(\tau)$                            & Hessian $\nabla^2_{\phi_i} \log p_\phi(\tau)$ \\[3pt]
+
+\midrule
+%--- Nash conditions ---
+\multicolumn{2}{@{}l}{\textit{Nash conditions}} \\[2pt]
+$\mu$                                  & SOS drift constant \\
+$\rho$                                 & SOS radius \\
+$r_{\mathrm{att}}$                     & Attraction radius \\
+$B_{r_{\mathrm{att}}}(\phi^*)$         & Attraction region of $\phi^*$ \\[3pt]
+
+\midrule
+%--- Meta-MAPG update ---
+\multicolumn{2}{@{}l}{\textit{Meta-MAPG update}} \\[2pt]
+$\alpha^i$                             & Learning rate of agent $i$ \\
+$\alpha^{-i}$                          & Learning rates of peer agents \\
+$L$                                    & Unroll length \\
+$\ell$                                 & Inner-loop index \\
+$M_L(\phi)$                            & Meta-MAPG correction \\
+$F_L(\phi)$                            & Full Meta-MAPG update $v(\phi) + M_L(\phi)$ \\
+$\lambda_n$                            & Shaping coefficient schedule \\
+$\lambda_c$                            & Constant shaping coefficient in phase 1 \\
+$\alpha_n$                             & Outer step size schedule \\
+$\widehat{M}_{L_n,n}$                  & Sampled Meta-MAPG correction \\
+$\hat{v}_n$                            & Sampled policy-gradient estimate \\[3pt]
+
+\midrule
+%--- Stochastic approximation ---
+\multicolumn{2}{@{}l}{\textit{Stochastic approximation}} \\[2pt]
+$F$                                    & Effective update direction \\
+$\xi_{n+1}$                            & Martingale-difference noise \\
+$\sigma^2$                             & Variance bound on $\xi_{n+1}$ \\
+$b_n$                                  & Bias term \\
+$\beta_n$                              & Bias magnitude sequence \\
+$C$                                    & Bias constant \\
+$\mathcal{F}_n$                        & Filtration at step $n$ \\
+$L_n$                                  & Unroll length at step $n$ \\[3pt]
+
+\midrule
+%--- Basin entry ---
+\multicolumn{2}{@{}l}{\textit{Basin entry}} \\[2pt]
+$T$                                        & Warm-up horizon \\
+$p_{\mathrm{entry}}(\mathcal{A}, T)$       & Basin-entry probability of algorithm $\mathcal{A}$ \\
+$\mu_M$                                    & Drift improvement from Meta-MAPG correction \\
+$\rho_\lambda$                             & Certified SOS radius under shaping strength $\lambda$ \\
+
+\end{longtable}
+
+\end{document}
