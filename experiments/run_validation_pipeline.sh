@@ -58,6 +58,15 @@ run_phase X --phase-x-k-values 1 5 10 25 50
 run_phase Y --phase-y-max-steps 100
 run_phase Z
 
+# Supplementary phases AA-FF (reviewer-gap experiments)
+run_phase AA --phase-aa-grid 21 --phase-aa-steps 1000 --phase-aa-batch 192
+run_phase BB --phase-bb-lambdas 0.0 0.5 1.0 2.0 5.0 --phase-bb-grid 11 --phase-bb-steps 1000 --phase-bb-batch 192
+run_phase DD --phase-dd-qs 0.0 0.25 0.5 1.0 1.5 2.0 --phase-dd-seeds 80 --phase-dd-n0 100 --phase-dd-total 2000 --phase-dd-scale 30 --phase-dd-batch 256
+run_phase EE --phase-ee-seeds 80 --phase-ee-warm-steps 1000 --phase-ee-cool-steps 500 --phase-ee-batch 192 --phase-ee-checkpoint-every 50
+run_phase FF --phase-ff-seeds 80 --phase-ff-steps 500 --phase-ff-K 8 --phase-ff-batch 192
+# CC last: MLP IPD unroll dominates wall-clock (cap at L in {1,3} if >2h per run)
+run_phase CC --phase-cc-Ls 1 3 5 --phase-cc-tabular-seeds 40 --phase-cc-tabular-steps 500 --phase-cc-mlp-seeds 30 --phase-cc-mlp-steps 500
+
 log "BUILD pdf"
 cd tex
 if command -v latexmk >/dev/null 2>&1; then

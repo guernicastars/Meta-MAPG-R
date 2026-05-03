@@ -218,6 +218,46 @@ def update_from_components(
     return update
 
 
+def update_from_components_asymmetric(
+    comps: GradientComponents,
+    methods: tuple[str, str],
+    peer_coefs: tuple[float, float],
+    own_coefs: tuple[float, float],
+) -> np.ndarray:
+    update = comps.base.copy()
+    for player in (0, 1):
+        if methods[player] in {"meta_pg", "meta_mapg"}:
+            update[player] = update[player] + own_coefs[player] * comps.own[player]
+        if methods[player] in {"lola_style", "meta_mapg"}:
+            update[player] = update[player] + peer_coefs[player] * comps.peer[player]
+    return update
+
+
+def estimate_components_L(
+    theta: np.ndarray,
+    game: Game,
+    batch_size: int,
+    rng: np.random.Generator,
+    inner_lr: float,
+    L: int,
+) -> GradientComponents:
+    # inner steps use the full joint update (base+own+peer) so own-term
+    # can compound across the unroll; L=1 reduces to estimate_components exactly.
+    if L < 1:
+        raise ValueError(f"L must be >= 1, got {L}")
+    theta_inner = theta.astype(float).copy()
+    for _ in range(L - 1):
+        comps_inner = estimate_components(theta_inner, game, batch_size, rng, inner_lr)
+        theta_inner = theta_inner + inner_lr * (
+            comps_inner.base + comps_inner.own + comps_inner.peer
+        )
+    return estimate_components(theta_inner, game, batch_size, rng, inner_lr)
+
+
+def perturb_theta(theta: np.ndarray, rng: np.random.Generator, scale: float) -> np.ndarray:
+    return theta + rng.normal(loc=0.0, scale=float(scale), size=theta.shape)
+
+
 def run_rollout(
     game: Game,
     method: str,
@@ -274,6 +314,131 @@ def run_rollout(
 def is_success(theta: np.ndarray, game: Game, threshold: float = 0.82) -> bool:
     coop = cooperation_probs(theta, game)
     return bool(np.min(coop) >= threshold)
+
+
+def run_rollout_asymmetric(
+    game: Game,
+    methods: tuple[str, str],
+    seed: int,
+    steps: int,
+    batch_size: int,
+    lr: float,
+    inner_lr: float,
+    peer_coefs: tuple[float, float],
+    own_coefs: tuple[float, float],
+    init_theta: np.ndarray | None = None,
+    lr_power: float = 0.25,
+    lambda_power: float = 0.0,
+    log_every: int = 10,
+) -> tuple[np.ndarray, list[dict[str, float | int | str]]]:
+    rng = np.random.default_rng(seed)
+    theta = (
+        init_theta.astype(float).copy()
+        if init_theta is not None
+        else rng.normal(loc=0.0, scale=1.35, size=(2, game.n_states))
+    )
+    rows: list[dict[str, float | int | str]] = []
+    for step in range(steps):
+        comps = estimate_components(theta, game, batch_size, rng, inner_lr)
+        lr_step = lr / ((step + 10.0) ** lr_power)
+        lam_step = (
+            peer_coefs[0] / ((step + 1.0) ** lambda_power),
+            peer_coefs[1] / ((step + 1.0) ** lambda_power),
+        )
+        update = update_from_components_asymmetric(comps, methods, lam_step, own_coefs)
+        theta = np.clip(theta + lr_step * update, -8.0, 8.0)
+        if step % log_every == 0 or step == steps - 1:
+            ret = expected_return(theta, game)
+            coop = cooperation_probs(theta, game)
+            rows.append(
+                {
+                    "game": game.name,
+                    "method0": methods[0],
+                    "method1": methods[1],
+                    "seed": seed,
+                    "step": step,
+                    "reward_p1": float(ret[0]),
+                    "reward_p2": float(ret[1]),
+                    "coop_p1": float(coop[0]),
+                    "coop_p2": float(coop[1]),
+                    "lr_step": float(lr_step),
+                    "lambda0_step": float(lam_step[0]),
+                    "lambda1_step": float(lam_step[1]),
+                }
+            )
+    return theta, rows
+
+
+def run_rollout_with_checkpoints(
+    game: Game,
+    method: str,
+    seed: int,
+    steps: int,
+    batch_size: int,
+    lr: float,
+    inner_lr: float,
+    peer_coef: float,
+    own_coef: float,
+    init_theta: np.ndarray | None = None,
+    lr_power: float = 0.25,
+    lambda_power: float = 0.0,
+    checkpoint_every: int = 10,
+) -> tuple[np.ndarray, list[dict]]:
+    rng = np.random.default_rng(seed)
+    theta = (
+        init_theta.astype(float).copy()
+        if init_theta is not None
+        else rng.normal(loc=0.0, scale=1.35, size=(2, game.n_states))
+    )
+    checkpoints: list[dict] = []
+    last_update_norm = 0.0
+    for step in range(steps):
+        comps = estimate_components(theta, game, batch_size, rng, inner_lr)
+        lr_step = lr / ((step + 10.0) ** lr_power)
+        lambda_step = peer_coef / ((step + 1.0) ** lambda_power)
+        update = update_from_components(comps, method, lambda_step, own_coef)
+        theta_new = np.clip(theta + lr_step * update, -8.0, 8.0)
+        last_update_norm = float(np.linalg.norm(theta_new - theta))
+        theta = theta_new
+        if step % checkpoint_every == 0 or step == steps - 1:
+            coop = cooperation_probs(theta, game)
+            welfare = float(np.sum(expected_return(theta, game)))
+            checkpoints.append(
+                {
+                    "step": int(step),
+                    "theta": theta.copy(),
+                    "coop_min": float(np.min(coop)),
+                    "welfare": welfare,
+                    "update_norm": last_update_norm,
+                }
+            )
+    return theta, checkpoints
+
+
+def select_checkpoint(
+    checkpoints: list[dict],
+    rule: str,
+    rng: np.random.Generator | None = None,
+) -> np.ndarray:
+    # rules: final | best_coopmin | best_welfare | lowest_update_norm_high_welfare | random
+    if not checkpoints:
+        raise ValueError("select_checkpoint called with empty list")
+    if rule == "final":
+        return checkpoints[-1]["theta"].copy()
+    if rule == "best_coopmin":
+        return max(checkpoints, key=lambda c: c["coop_min"])["theta"].copy()
+    if rule == "best_welfare":
+        return max(checkpoints, key=lambda c: c["welfare"])["theta"].copy()
+    if rule == "lowest_update_norm_high_welfare":
+        sorted_by_welfare = sorted(checkpoints, key=lambda c: c["welfare"], reverse=True)
+        top = sorted_by_welfare[: max(1, len(sorted_by_welfare) // 2)]
+        return min(top, key=lambda c: c["update_norm"])["theta"].copy()
+    if rule == "random":
+        if rng is None:
+            rng = np.random.default_rng(0)
+        idx = int(rng.integers(0, len(checkpoints)))
+        return checkpoints[idx]["theta"].copy()
+    raise ValueError(f"unknown selection rule: {rule}")
 
 
 def run_ablation(args: argparse.Namespace, outdir: Path) -> pd.DataFrame:

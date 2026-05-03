@@ -37,13 +37,19 @@ from run_meta_mapg_experiments import (  # noqa: E402
     GradientComponents,
     cooperation_probs,
     estimate_components,
+    estimate_components_L,
     expected_return,
     is_success,
     logit,
+    perturb_theta,
     run_rollout,
+    run_rollout_asymmetric,
+    run_rollout_with_checkpoints,
+    select_checkpoint,
     sigmoid,
     stag_hunt,
     update_from_components,
+    update_from_components_asymmetric,
 )
 
 
@@ -2516,6 +2522,815 @@ def plot_phase_z(df: pd.DataFrame, cfg: Config) -> None:
     plt.close(fig)
 
 
+# =========================================================================
+# Phase AA : asymmetric learner pairings (Meta-MAPG x PG)
+# =========================================================================
+def run_phase_aa(
+    cfg: Config,
+    grid_size: int,
+    steps: int,
+    batch_size: int,
+) -> Path:
+    game = stag_hunt()
+    grid = np.linspace(0.05, 0.95, grid_size)
+    pairings = [
+        ("PG_PG", "standard_pg", "standard_pg"),
+        ("MM_PG", "meta_mapg", "standard_pg"),
+        ("PG_MM", "standard_pg", "meta_mapg"),
+        ("MM_MM", "meta_mapg", "meta_mapg"),
+    ]
+    rows: list[dict] = []
+    arrays_success: dict[str, np.ndarray] = {}
+    arrays_welfare: dict[str, np.ndarray] = {}
+    arrays_fairness: dict[str, np.ndarray] = {}
+    for k, (label, m0, m1) in enumerate(pairings):
+        success = np.zeros((grid_size, grid_size), dtype=int)
+        welfare = np.zeros((grid_size, grid_size), dtype=float)
+        fairness = np.zeros((grid_size, grid_size), dtype=float)
+        for i, p1 in enumerate(grid):
+            for j, p2 in enumerate(grid):
+                init_theta = np.zeros((2, game.n_states), dtype=float)
+                init_theta[0, 0] = logit(float(p1))
+                init_theta[1, 0] = logit(float(p2))
+                theta_final, _ = run_rollout_asymmetric(
+                    game=game,
+                    methods=(m0, m1),
+                    seed=cfg.seed_base + 2_000_000 + 100_000 * k + 101 * i + 13 * j,
+                    steps=steps,
+                    batch_size=batch_size,
+                    lr=cfg.lr,
+                    inner_lr=cfg.inner_lr,
+                    peer_coefs=(cfg.peer_coef, cfg.peer_coef),
+                    own_coefs=(cfg.own_coef, cfg.own_coef),
+                    init_theta=init_theta,
+                    lr_power=cfg.lr_power,
+                    lambda_power=0.0,
+                    log_every=steps + 1,
+                )
+                ret = expected_return(theta_final, game)
+                coop = cooperation_probs(theta_final, game)
+                success[i, j] = int(is_success(theta_final, game, threshold=cfg.success_threshold))
+                welfare[i, j] = float(np.sum(ret))
+                fairness[i, j] = float(abs(ret[0] - ret[1]))
+                rows.append(
+                    {
+                        "phase": "AA",
+                        "pair_label": label,
+                        "method0": m0,
+                        "method1": m1,
+                        "init_p1": float(p1),
+                        "init_p2": float(p2),
+                        "success": int(success[i, j]),
+                        "final_p1": float(coop[0]),
+                        "final_p2": float(coop[1]),
+                        "welfare": float(welfare[i, j]),
+                        "fairness_gap": float(fairness[i, j]),
+                        "reward_p1": float(ret[0]),
+                        "reward_p2": float(ret[1]),
+                    }
+                )
+        arrays_success[label] = success
+        arrays_welfare[label] = welfare
+        arrays_fairness[label] = fairness
+        np.save(cfg.outdir / f"phase_aa_success_{label}.npy", success)
+        np.save(cfg.outdir / f"phase_aa_welfare_{label}.npy", welfare)
+        np.save(cfg.outdir / f"phase_aa_fairness_{label}.npy", fairness)
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_aa_pairings.csv"
+    df.to_csv(out, index=False)
+    np.save(cfg.outdir / "phase_aa_grid.npy", grid)
+    plot_phase_aa(arrays_success, arrays_welfare, arrays_fairness, grid, df, cfg)
+    return out
+
+
+def plot_phase_aa(
+    success: dict[str, np.ndarray],
+    welfare: dict[str, np.ndarray],
+    fairness: dict[str, np.ndarray],
+    grid: np.ndarray,
+    df: pd.DataFrame,
+    cfg: Config,
+) -> None:
+    pretty = {
+        "PG_PG": r"PG $\times$ PG",
+        "MM_PG": r"Meta-MAPG $\times$ PG",
+        "PG_MM": r"PG $\times$ Meta-MAPG",
+        "MM_MM": r"Meta-MAPG $\times$ Meta-MAPG",
+    }
+    fig, axes = plt.subplots(2, 2, figsize=(7.0, 6.6))
+    for ax, label in zip(axes.flat, ["PG_PG", "MM_PG", "PG_MM", "MM_MM"]):
+        ax.imshow(
+            success[label].T,
+            origin="lower",
+            extent=(grid[0], grid[-1], grid[0], grid[-1]),
+            cmap="RdYlGn",
+            vmin=0,
+            vmax=1,
+            aspect="equal",
+            interpolation="nearest",
+        )
+        ax.scatter([1.0], [1.0], marker="*", s=110, color="black", zorder=5)
+        ax.scatter([0.0], [0.0], marker="X", s=70, color="black", zorder=5)
+        frac = float(np.mean(success[label]))
+        ax.set_title(f"{pretty[label]}: coop = {frac*100:.1f}%", fontsize=10)
+        ax.set_xlabel(r"$p_1^0$")
+        ax.set_ylabel(r"$p_2^0$")
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_aa_basin_atlas.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+    fig, axes = plt.subplots(1, 3, figsize=(9.0, 3.0))
+    labels = ["PG_PG", "MM_PG", "PG_MM", "MM_MM"]
+    colors = ["#4c78a8", "#b279a2", "#f58518", "#54a24b"]
+    coop_rates = [float(df[df.pair_label == l]["success"].mean()) for l in labels]
+    welfares = [float(df[df.pair_label == l]["welfare"].mean()) for l in labels]
+    fairnesses = [float(df[df.pair_label == l]["fairness_gap"].mean()) for l in labels]
+
+    axes[0].bar(labels, coop_rates, color=colors)
+    axes[0].set_ylabel("Cooperative success rate")
+    axes[0].set_ylim(0, 1.02)
+    axes[0].tick_params(axis="x", labelrotation=20, labelsize=8)
+    axes[0].grid(axis="y", alpha=0.25)
+    axes[0].set_title("Cooperation", fontsize=10)
+
+    axes[1].bar(labels, welfares, color=colors)
+    axes[1].set_ylabel("Mean joint welfare")
+    axes[1].tick_params(axis="x", labelrotation=20, labelsize=8)
+    axes[1].grid(axis="y", alpha=0.25)
+    axes[1].set_title("Welfare", fontsize=10)
+
+    axes[2].bar(labels, fairnesses, color=colors)
+    axes[2].set_ylabel(r"Mean $|u_1 - u_2|$")
+    axes[2].tick_params(axis="x", labelrotation=20, labelsize=8)
+    axes[2].grid(axis="y", alpha=0.25)
+    axes[2].set_title("Exploitation gap", fontsize=10)
+
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_aa_metrics.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# =========================================================================
+# Phase BB : heterogeneous peer coefficients (lambda_1, lambda_2)
+# =========================================================================
+def run_phase_bb(
+    cfg: Config,
+    lambdas: list[float],
+    grid_size: int,
+    steps: int,
+    batch_size: int,
+) -> Path:
+    game = stag_hunt()
+    grid = np.linspace(0.05, 0.95, grid_size)
+    rows: list[dict] = []
+    coop_grid = np.zeros((len(lambdas), len(lambdas)), dtype=float)
+    welfare_grid = np.zeros_like(coop_grid)
+    fairness_grid = np.zeros_like(coop_grid)
+    for li, l0 in enumerate(lambdas):
+        for lj, l1 in enumerate(lambdas):
+            n_succ = 0
+            sum_w = 0.0
+            sum_f = 0.0
+            n_total = 0
+            for i, p1 in enumerate(grid):
+                for j, p2 in enumerate(grid):
+                    init_theta = np.zeros((2, game.n_states), dtype=float)
+                    init_theta[0, 0] = logit(float(p1))
+                    init_theta[1, 0] = logit(float(p2))
+                    theta_final, _ = run_rollout_asymmetric(
+                        game=game,
+                        methods=("meta_mapg", "meta_mapg"),
+                        seed=cfg.seed_base + 2_100_000
+                        + 30_000 * li + 1_000 * lj + 101 * i + 13 * j,
+                        steps=steps,
+                        batch_size=batch_size,
+                        lr=cfg.lr,
+                        inner_lr=cfg.inner_lr,
+                        peer_coefs=(float(l0), float(l1)),
+                        own_coefs=(cfg.own_coef, cfg.own_coef),
+                        init_theta=init_theta,
+                        lr_power=cfg.lr_power,
+                        lambda_power=0.0,
+                        log_every=steps + 1,
+                    )
+                    ret = expected_return(theta_final, game)
+                    n_succ += int(is_success(theta_final, game, threshold=cfg.success_threshold))
+                    sum_w += float(np.sum(ret))
+                    sum_f += float(abs(ret[0] - ret[1]))
+                    n_total += 1
+            coop_grid[li, lj] = n_succ / n_total
+            welfare_grid[li, lj] = sum_w / n_total
+            fairness_grid[li, lj] = sum_f / n_total
+            rows.append(
+                {
+                    "phase": "BB",
+                    "lambda0": float(l0),
+                    "lambda1": float(l1),
+                    "coop_basin_fraction": coop_grid[li, lj],
+                    "mean_welfare": welfare_grid[li, lj],
+                    "fairness_gap": fairness_grid[li, lj],
+                    "n_cells": int(n_total),
+                }
+            )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_bb_hetero.csv"
+    df.to_csv(out, index=False)
+    np.save(cfg.outdir / "phase_bb_lambdas.npy", np.array(lambdas, dtype=float))
+    np.save(cfg.outdir / "phase_bb_coop_grid.npy", coop_grid)
+    np.save(cfg.outdir / "phase_bb_welfare_grid.npy", welfare_grid)
+    np.save(cfg.outdir / "phase_bb_fairness_grid.npy", fairness_grid)
+    plot_phase_bb(coop_grid, welfare_grid, fairness_grid, lambdas, cfg)
+    return out
+
+
+def plot_phase_bb(
+    coop: np.ndarray,
+    welfare: np.ndarray,
+    fairness: np.ndarray,
+    lambdas: list[float],
+    cfg: Config,
+) -> None:
+    fig, axes = plt.subplots(1, 3, figsize=(10.0, 3.2))
+    for ax, mat, title, cmap, vmin, vmax in [
+        (axes[0], coop, "Cooperative basin fraction", "viridis", 0.0, 1.0),
+        (axes[1], welfare, "Mean joint welfare", "magma", None, None),
+        (axes[2], fairness, r"Mean $|u_1 - u_2|$", "Reds", 0.0, None),
+    ]:
+        im = ax.imshow(
+            mat,
+            origin="lower",
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax,
+            aspect="auto",
+            interpolation="nearest",
+        )
+        ax.set_xticks(range(len(lambdas)))
+        ax.set_yticks(range(len(lambdas)))
+        ax.set_xticklabels([f"{l:g}" for l in lambdas], fontsize=8)
+        ax.set_yticklabels([f"{l:g}" for l in lambdas], fontsize=8)
+        ax.set_xlabel(r"$\lambda_2$")
+        ax.set_ylabel(r"$\lambda_1$")
+        ax.set_title(title, fontsize=10)
+        fig.colorbar(im, ax=ax, shrink=0.85)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_bb_hetero.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# =========================================================================
+# Phase CC : unroll-length sweep L in {1, 3, 5} (tabular IPD + MLP IPD)
+# =========================================================================
+def run_phase_cc_tabular(
+    cfg: Config,
+    L_values: list[int],
+    n_seeds: int,
+    n_steps: int,
+    batch_size: int,
+) -> Path:
+    from run_meta_mapg_experiments import prisoners_dilemma  # local import
+
+    game = prisoners_dilemma()
+    methods = ["standard_pg", "meta_pg", "lola_style", "meta_mapg"]
+    rows: list[dict] = []
+    for L in L_values:
+        for method in methods:
+            for seed in range(n_seeds):
+                rng = np.random.default_rng(
+                    cfg.seed_base + 2_200_000 + 1_000 * int(L) + 100 * methods.index(method) + seed
+                )
+                theta = rng.normal(loc=0.0, scale=1.35, size=(2, game.n_states))
+                eff_L = 1 if method == "standard_pg" else int(L)
+                for step in range(n_steps):
+                    comps = estimate_components_L(theta, game, batch_size, rng, cfg.inner_lr, eff_L)
+                    lr_step = cfg.lr / ((step + 10.0) ** cfg.lr_power)
+                    update = update_from_components(comps, method, cfg.peer_coef, cfg.own_coef)
+                    theta = np.clip(theta + lr_step * update, -8.0, 8.0)
+                ret = expected_return(theta, game)
+                coop = cooperation_probs(theta, game)
+                rows.append(
+                    {
+                        "phase": "CC_tab",
+                        "L": int(L),
+                        "method": method,
+                        "seed": seed,
+                        "success": int(is_success(theta, game, threshold=cfg.success_threshold)),
+                        "final_coop_min": float(np.min(coop)),
+                        "final_welfare": float(np.sum(ret)),
+                    }
+                )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_cc_unroll_tab.csv"
+    df.to_csv(out, index=False)
+    plot_phase_cc_tabular(df, cfg)
+    return out
+
+
+def plot_phase_cc_tabular(df: pd.DataFrame, cfg: Config) -> None:
+    methods = ["standard_pg", "meta_pg", "lola_style", "meta_mapg"]
+    L_values = sorted(df["L"].unique().tolist())
+    fig, ax = plt.subplots(figsize=(5.6, 3.2))
+    for method in methods:
+        rates = []
+        ci_lo = []
+        ci_hi = []
+        for L in L_values:
+            sub = df[(df["method"] == method) & (df["L"] == L)]
+            k = int(sub["success"].sum())
+            n = int(len(sub))
+            if n == 0:
+                rates.append(float("nan"))
+                ci_lo.append(0.0)
+                ci_hi.append(0.0)
+                continue
+            from run_meta_mapg_experiments import _wilson_ci
+            p, lo, hi = _wilson_ci(k, n)
+            rates.append(p)
+            ci_lo.append(p - lo)
+            ci_hi.append(hi - p)
+        ax.errorbar(
+            L_values,
+            rates,
+            yerr=[ci_lo, ci_hi],
+            marker="o",
+            capsize=3,
+            color=METHOD_COLORS[method],
+            label=METHOD_LABELS[method],
+            linewidth=1.8,
+        )
+    ax.set_xlabel("Inner unroll length L")
+    ax.set_ylabel("Cooperative success rate")
+    ax.set_xticks(L_values)
+    ax.set_ylim(0, 1.05)
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.25)
+    ax.set_title(r"Tabular IPD: own-vs-peer separation across $L$", fontsize=10)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_cc_unroll_tab.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+def run_phase_cc_mlp(
+    cfg: Config,
+    L_values: list[int],
+    n_seeds: int,
+    n_steps: int,
+    batch_size: int,
+) -> Path:
+    from run_mlp_ipd import train_one_seed  # deferred: heavy torch import
+
+    methods = ["standard_pg", "meta_pg", "lola_style", "meta_mapg"]
+    rows: list[dict] = []
+    for L in L_values:
+        for method in methods:
+            for seed in range(n_seeds):
+                eff_L = 1 if method == "standard_pg" else int(L)
+                r = train_one_seed(
+                    method=method,
+                    seed=seed + 10_000 * int(L),
+                    n_steps=n_steps,
+                    batch_size=batch_size,
+                    peer_coef=cfg.peer_coef,
+                    own_coef=cfg.own_coef,
+                    lr=cfg.lr,
+                    lr_power=cfg.lr_power,
+                    inner_lr=cfg.inner_lr,
+                    inner_unroll=eff_L,
+                )
+                rows.append(
+                    {
+                        "phase": "CC_mlp",
+                        "L": int(L),
+                        "method": method,
+                        "seed": seed,
+                        "success": int(r["success"]),
+                        "final_coop": float(r["final_coop"]),
+                        "final_return": float((r["final_return0"] + r["final_return1"]) / 2.0),
+                    }
+                )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_cc_unroll_mlp.csv"
+    df.to_csv(out, index=False)
+    plot_phase_cc_mlp(df, cfg)
+    return out
+
+
+def plot_phase_cc_mlp(df: pd.DataFrame, cfg: Config) -> None:
+    methods = ["standard_pg", "meta_pg", "lola_style", "meta_mapg"]
+    L_values = sorted(df["L"].unique().tolist())
+    fig, ax = plt.subplots(figsize=(5.6, 3.2))
+    for method in methods:
+        rates = []
+        ci_lo = []
+        ci_hi = []
+        for L in L_values:
+            sub = df[(df["method"] == method) & (df["L"] == L)]
+            k = int(sub["success"].sum())
+            n = int(len(sub))
+            if n == 0:
+                rates.append(float("nan"))
+                ci_lo.append(0.0)
+                ci_hi.append(0.0)
+                continue
+            from run_meta_mapg_experiments import _wilson_ci
+            p, lo, hi = _wilson_ci(k, n)
+            rates.append(p)
+            ci_lo.append(p - lo)
+            ci_hi.append(hi - p)
+        ax.errorbar(
+            L_values,
+            rates,
+            yerr=[ci_lo, ci_hi],
+            marker="o",
+            capsize=3,
+            color=METHOD_COLORS[method],
+            label=METHOD_LABELS[method],
+            linewidth=1.8,
+        )
+    ax.set_xlabel("Inner unroll length L")
+    ax.set_ylabel("Cooperative success rate")
+    ax.set_xticks(L_values)
+    ax.set_ylim(0, 1.05)
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.25)
+    ax.set_title(r"MLP IPD: own-vs-peer separation across $L$", fontsize=10)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_cc_unroll_mlp.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# =========================================================================
+# Phase DD : cooldown annealing-rate q sweep
+# =========================================================================
+def run_phase_dd(
+    cfg: Config,
+    q_values: list[float],
+    n_seeds: int,
+    n0: int,
+    total_steps: int,
+    scale: int,
+    batch_size: int,
+) -> Path:
+    game = stag_hunt()
+    rng_master = np.random.default_rng(cfg.seed_base + 2_300_000)
+    init_thetas = [
+        rng_master.normal(loc=0.0, scale=1.35, size=(2, game.n_states))
+        for _ in range(n_seeds)
+    ]
+    rows: list[dict] = []
+    for qi, q in enumerate(q_values):
+        for seed in range(n_seeds):
+            theta = init_thetas[seed].copy()
+            rng = np.random.default_rng(cfg.seed_base + 2_310_000 + 1_000 * qi + seed)
+            coop_trace: list[float] = []
+            for step in range(total_steps):
+                comps = estimate_components(theta, game, batch_size, rng, cfg.inner_lr)
+                lr_step = cfg.lr / ((step + 10.0) ** cfg.lr_power)
+                if step < n0:
+                    lam_step = cfg.peer_coef
+                else:
+                    lam_step = cfg.peer_coef / (
+                        (1.0 + (step - n0) / float(max(1, scale))) ** float(q)
+                    )
+                update = update_from_components(comps, "meta_mapg", lam_step, cfg.own_coef)
+                theta = np.clip(theta + lr_step * update, -8.0, 8.0)
+                coop_trace.append(float(np.min(cooperation_probs(theta, game))))
+            arr = np.array(coop_trace)
+            second_half = arr[total_steps // 2:]
+            rows.append(
+                {
+                    "phase": "DD",
+                    "q": float(q),
+                    "seed": seed,
+                    "final_coop_min": float(arr[-1]),
+                    "second_half_coop_mean": float(np.mean(second_half)),
+                    "second_half_coop_std": float(np.std(second_half, ddof=1)) if second_half.size > 1 else 0.0,
+                    "success": int(arr[-1] >= cfg.success_threshold),
+                }
+            )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_dd_qsweep.csv"
+    df.to_csv(out, index=False)
+    plot_phase_dd(df, cfg)
+    return out
+
+
+def plot_phase_dd(df: pd.DataFrame, cfg: Config) -> None:
+    from run_meta_mapg_experiments import _wilson_ci
+    qs = sorted(df["q"].unique().tolist())
+    succ_p = []
+    succ_lo = []
+    succ_hi = []
+    stab = []
+    for q in qs:
+        sub = df[df["q"] == q]
+        k = int(sub["success"].sum())
+        n = int(len(sub))
+        p, lo, hi = _wilson_ci(k, n)
+        succ_p.append(p)
+        succ_lo.append(p - lo)
+        succ_hi.append(hi - p)
+        stab.append(float(sub["second_half_coop_std"].mean()))
+    fig, axes = plt.subplots(1, 2, figsize=(8.0, 3.2))
+    ax = axes[0]
+    ax.errorbar(qs, succ_p, yerr=[succ_lo, succ_hi], marker="o", capsize=3,
+                color=METHOD_COLORS["meta_mapg"], linewidth=1.8)
+    ax.set_xlabel(r"Annealing exponent $q$")
+    ax.set_ylabel("Cooperative success rate")
+    ax.set_ylim(0, 1.05)
+    ax.set_title("Phase 2 robustness to $q$", fontsize=10)
+    ax.grid(alpha=0.25)
+
+    ax = axes[1]
+    ax.plot(qs, stab, marker="s", color="#2fbf71", linewidth=1.8)
+    ax.set_xlabel(r"Annealing exponent $q$")
+    ax.set_ylabel(r"Second-half min-coop std")
+    ax.set_title("Endpoint stability vs $q$", fontsize=10)
+    ax.grid(alpha=0.25)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_dd_qsweep.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# =========================================================================
+# Phase EE : checkpoint-selection rules during warm-up
+# =========================================================================
+def run_phase_ee(
+    cfg: Config,
+    rules: list[str],
+    n_seeds: int,
+    warm_steps: int,
+    cool_steps: int,
+    batch_size: int,
+    checkpoint_every: int,
+) -> Path:
+    # warm-up and cooldown seeds are disjoint (warm: +2_400_000, cool: +2_450_000)
+    # so checkpoint-rule selection cannot overfit to the cooldown evaluation noise.
+    game = stag_hunt()
+    rng_master = np.random.default_rng(cfg.seed_base + 2_400_000)
+    init_thetas = [
+        rng_master.normal(loc=0.0, scale=1.35, size=(2, game.n_states))
+        for _ in range(n_seeds)
+    ]
+    rows: list[dict] = []
+    for seed in range(n_seeds):
+        warm_seed = cfg.seed_base + 2_400_000 + 100 * seed
+        cool_seed = cfg.seed_base + 2_450_000 + 100 * seed
+        _, ckpts = run_rollout_with_checkpoints(
+            game=game,
+            method="meta_mapg",
+            seed=warm_seed,
+            steps=warm_steps,
+            batch_size=batch_size,
+            lr=cfg.lr,
+            inner_lr=cfg.inner_lr,
+            peer_coef=cfg.peer_coef,
+            own_coef=cfg.own_coef,
+            init_theta=init_thetas[seed],
+            lr_power=cfg.lr_power,
+            lambda_power=0.0,
+            checkpoint_every=checkpoint_every,
+        )
+        rule_rng = np.random.default_rng(warm_seed + 7919)
+        for rule in rules:
+            init_cool = select_checkpoint(ckpts, rule, rng=rule_rng)
+            theta_final, _ = run_rollout(
+                game=game,
+                method="standard_pg",
+                seed=cool_seed,
+                steps=cool_steps,
+                batch_size=batch_size,
+                lr=cfg.lr,
+                inner_lr=cfg.inner_lr,
+                peer_coef=0.0,
+                own_coef=cfg.own_coef,
+                init_theta=init_cool,
+                lr_power=cfg.lr_power,
+                lambda_power=0.0,
+                log_every=cool_steps + 1,
+            )
+            ret = expected_return(theta_final, game)
+            coop = cooperation_probs(theta_final, game)
+            rows.append(
+                {
+                    "phase": "EE",
+                    "rule": rule,
+                    "seed": seed,
+                    "post_cooldown_coop_min": float(np.min(coop)),
+                    "post_cooldown_welfare": float(np.sum(ret)),
+                    "post_cooldown_success": int(is_success(theta_final, game, threshold=cfg.success_threshold)),
+                }
+            )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_ee_checkpoint.csv"
+    df.to_csv(out, index=False)
+    plot_phase_ee(df, cfg)
+    return out
+
+
+def plot_phase_ee(df: pd.DataFrame, cfg: Config) -> None:
+    from run_meta_mapg_experiments import _wilson_ci
+    rules = list(df["rule"].unique())
+    short_labels = {
+        "final": "final",
+        "best_coopmin": "best\ncoopmin",
+        "best_welfare": "best\nwelfare",
+        "lowest_update_norm_high_welfare": "low-norm\nhigh-welf",
+        "random": "random",
+    }
+    xlabels = [short_labels.get(r, r) for r in rules]
+    rates, ci_lo, ci_hi, welfares = [], [], [], []
+    for r in rules:
+        sub = df[df["rule"] == r]
+        k = int(sub["post_cooldown_success"].sum())
+        n = int(len(sub))
+        p, lo, hi = _wilson_ci(k, n)
+        rates.append(p)
+        ci_lo.append(p - lo)
+        ci_hi.append(hi - p)
+        welfares.append(float(sub["post_cooldown_welfare"].mean()))
+    colors = ["#4c78a8", "#f58518", "#54a24b", "#b279a2", "#e45756"][: len(rules)]
+    xs = range(len(rules))
+    fig, axes = plt.subplots(1, 2, figsize=(9.0, 3.8))
+
+    ax = axes[0]
+    ax.bar(xs, rates, yerr=[ci_lo, ci_hi], color=colors, capsize=4, width=0.6)
+    ax.set_xticks(list(xs))
+    ax.set_xticklabels(xlabels, fontsize=8.5)
+    ax.set_ylabel("Post-cooldown success rate")
+    ax.set_ylim(0, 1.05)
+    ax.grid(axis="y", alpha=0.25)
+    ax.set_title("Selection-rule effect on basin entry", fontsize=10)
+
+    ax = axes[1]
+    w_min = min(welfares) - 0.05
+    w_max = max(welfares) + 0.05
+    ax.bar(xs, welfares, color=colors, width=0.6)
+    ax.set_xticks(list(xs))
+    ax.set_xticklabels(xlabels, fontsize=8.5)
+    ax.set_ylabel("Mean post-cooldown welfare")
+    ax.set_ylim(w_min, w_max)
+    ax.grid(axis="y", alpha=0.25)
+    ax.set_title("Selection-rule effect on welfare", fontsize=10)
+
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_ee_checkpoint.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
+# =========================================================================
+# Phase FF : policy perturbation vs environment reset
+# =========================================================================
+def run_phase_ff(
+    cfg: Config,
+    n_seeds: int,
+    steps_per_attempt: int,
+    K_budget: int,
+    batch_size: int,
+    perturb_low: float,
+    perturb_high: float,
+) -> Path:
+    game = stag_hunt()
+    rng_master = np.random.default_rng(cfg.seed_base + 2_500_000)
+    init_thetas = [
+        rng_master.normal(loc=0.0, scale=1.35, size=(2, game.n_states))
+        for _ in range(n_seeds)
+    ]
+    conditions = ["episode_only", "perturb_low", "perturb_high", "reinit", "ckpt_warm"]
+    rows: list[dict] = []
+    for seed in range(n_seeds):
+        for cond in conditions:
+            rng = np.random.default_rng(cfg.seed_base + 2_510_000 + 100 * seed + conditions.index(cond))
+            ever_success = False
+            first_hit = K_budget + 1
+            theta = init_thetas[seed].copy()
+
+            if cond == "ckpt_warm":
+                _, ckpts = run_rollout_with_checkpoints(
+                    game=game,
+                    method="meta_mapg",
+                    seed=cfg.seed_base + 2_520_000 + 100 * seed,
+                    steps=steps_per_attempt,
+                    batch_size=batch_size,
+                    lr=cfg.lr,
+                    inner_lr=cfg.inner_lr,
+                    peer_coef=cfg.peer_coef,
+                    own_coef=cfg.own_coef,
+                    init_theta=init_thetas[seed],
+                    lr_power=cfg.lr_power,
+                    lambda_power=0.0,
+                    checkpoint_every=max(1, steps_per_attempt // 20),
+                )
+                warm_theta = select_checkpoint(ckpts, "best_coopmin")
+
+            for k in range(1, K_budget + 1):
+                if cond == "episode_only":
+                    theta_attempt = theta
+                elif cond == "perturb_low":
+                    theta_attempt = perturb_theta(theta, rng, perturb_low) if k > 1 else theta
+                elif cond == "perturb_high":
+                    theta_attempt = perturb_theta(theta, rng, perturb_high) if k > 1 else theta
+                elif cond == "reinit":
+                    theta_attempt = rng.uniform(low=-3.0, high=3.0, size=(2, game.n_states))
+                elif cond == "ckpt_warm":
+                    theta_attempt = warm_theta + rng.normal(0.0, 0.05, size=warm_theta.shape) if k > 1 else warm_theta
+                else:
+                    raise ValueError(cond)
+                theta_after, _ = run_rollout(
+                    game=game,
+                    method="meta_mapg",
+                    seed=int(rng.integers(0, 2**31 - 1)),
+                    steps=steps_per_attempt,
+                    batch_size=batch_size,
+                    lr=cfg.lr,
+                    inner_lr=cfg.inner_lr,
+                    peer_coef=cfg.peer_coef,
+                    own_coef=cfg.own_coef,
+                    init_theta=theta_attempt,
+                    lr_power=cfg.lr_power,
+                    lambda_power=0.0,
+                    log_every=steps_per_attempt + 1,
+                )
+                theta = theta_after  # episode_only path uses this for next iteration
+                if is_success(theta_after, game, threshold=cfg.success_threshold):
+                    ever_success = True
+                    if first_hit == K_budget + 1:
+                        first_hit = k
+                rows.append(
+                    {
+                        "phase": "FF",
+                        "condition": cond,
+                        "seed": seed,
+                        "k": int(k),
+                        "success_so_far": int(ever_success),
+                        "first_hit": int(first_hit),
+                    }
+                )
+    df = pd.DataFrame(rows)
+    out = cfg.outdir / "phase_ff_restart.csv"
+    df.to_csv(out, index=False)
+    plot_phase_ff(df, K_budget, cfg)
+    return out
+
+
+def plot_phase_ff(df: pd.DataFrame, K_budget: int, cfg: Config) -> None:
+    conditions = ["episode_only", "perturb_low", "perturb_high", "reinit", "ckpt_warm"]
+    pretty = {
+        "episode_only": "episode reset only",
+        "perturb_low": r"perturb $\sigma=0.1$",
+        "perturb_high": r"perturb $\sigma=0.5$",
+        "reinit": "full reinit",
+        "ckpt_warm": "ckpt warm-start",
+    }
+    colors = {
+        "episode_only": "#e45756",
+        "perturb_low": "#f58518",
+        "perturb_high": "#b279a2",
+        "reinit": "#4c78a8",
+        "ckpt_warm": "#2fbf71",
+    }
+    fig, ax = plt.subplots(figsize=(5.2, 3.4))
+    for cond in conditions:
+        sub = df[df["condition"] == cond]
+        rates = []
+        for k in range(1, K_budget + 1):
+            sub_k = sub[sub["k"] == k]
+            n = sub_k["seed"].nunique()
+            if n == 0:
+                rates.append(float("nan"))
+                continue
+            ever = sub_k.groupby("seed")["success_so_far"].max()
+            rates.append(float(ever.mean()))
+        ax.plot(range(1, K_budget + 1), rates, marker="o",
+                color=colors[cond], linewidth=1.8, label=pretty[cond])
+    ax.set_xlabel("Restart budget K")
+    ax.set_ylabel("P(reach cooperation by k)")
+    ax.set_xlim(1, K_budget)
+    ax.set_ylim(0, 1.02)
+    ax.legend(fontsize=7, loc="lower right")
+    ax.grid(alpha=0.25)
+    ax.set_title("Episode reset is not policy restart", fontsize=10)
+    fig.tight_layout()
+    out = cfg.fig_outdir / "phase_ff_restart.pdf"
+    fig.savefig(out)
+    fig.savefig(out.with_suffix(".png"), dpi=180)
+    plt.close(fig)
+
+
 # -------------------------------------------------------------------------
 # Driver
 # -------------------------------------------------------------------------
@@ -2527,7 +3342,9 @@ def parse_args() -> argparse.Namespace:
         default="all",
         choices=[
             "A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "A2", "D2",
-            "M", "N", "O", "P", "Q", "R", "T", "U", "V", "W", "X", "Y", "Z", "all",
+            "M", "N", "O", "P", "Q", "R", "T", "U", "V", "W", "X", "Y", "Z",
+            "AA", "BB", "CC", "DD", "EE", "FF",
+            "all",
         ],
     )
     p.add_argument("--outdir", type=Path, default=Path("artifacts/validation"))
@@ -2623,6 +3440,49 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--phase-z-t-values", type=float, nargs="+", default=[-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0, 5.25, 5.5])
     p.add_argument("--phase-z-grid", type=int, default=15)
     p.add_argument("--phase-z-steps", type=int, default=100)
+    # Phase AA
+    p.add_argument("--phase-aa-grid", type=int, default=21)
+    p.add_argument("--phase-aa-steps", type=int, default=1000)
+    p.add_argument("--phase-aa-batch", type=int, default=192)
+    # Phase BB
+    p.add_argument("--phase-bb-lambdas", type=float, nargs="+", default=[0.0, 0.5, 1.0, 2.0, 5.0])
+    p.add_argument("--phase-bb-grid", type=int, default=11)
+    p.add_argument("--phase-bb-steps", type=int, default=1000)
+    p.add_argument("--phase-bb-batch", type=int, default=192)
+    # Phase CC
+    p.add_argument("--phase-cc-Ls", type=int, nargs="+", default=[1, 3, 5])
+    p.add_argument("--phase-cc-tabular-seeds", type=int, default=40)
+    p.add_argument("--phase-cc-tabular-steps", type=int, default=500)
+    p.add_argument("--phase-cc-tabular-batch", type=int, default=192)
+    p.add_argument("--phase-cc-mlp-seeds", type=int, default=30)
+    p.add_argument("--phase-cc-mlp-steps", type=int, default=500)
+    p.add_argument("--phase-cc-mlp-batch", type=int, default=64)
+    # Phase DD
+    p.add_argument("--phase-dd-qs", type=float, nargs="+", default=[0.0, 0.25, 0.5, 1.0, 1.5, 2.0])
+    p.add_argument("--phase-dd-seeds", type=int, default=80)
+    p.add_argument("--phase-dd-n0", type=int, default=100)
+    p.add_argument("--phase-dd-total", type=int, default=2000)
+    p.add_argument("--phase-dd-scale", type=int, default=30)
+    p.add_argument("--phase-dd-batch", type=int, default=256)
+    # Phase EE
+    p.add_argument(
+        "--phase-ee-rules",
+        type=str,
+        nargs="+",
+        default=["final", "best_coopmin", "best_welfare", "lowest_update_norm_high_welfare", "random"],
+    )
+    p.add_argument("--phase-ee-seeds", type=int, default=80)
+    p.add_argument("--phase-ee-warm-steps", type=int, default=1000)
+    p.add_argument("--phase-ee-cool-steps", type=int, default=500)
+    p.add_argument("--phase-ee-batch", type=int, default=192)
+    p.add_argument("--phase-ee-checkpoint-every", type=int, default=50)
+    # Phase FF
+    p.add_argument("--phase-ff-seeds", type=int, default=80)
+    p.add_argument("--phase-ff-steps", type=int, default=500)
+    p.add_argument("--phase-ff-K", type=int, default=8)
+    p.add_argument("--phase-ff-batch", type=int, default=192)
+    p.add_argument("--phase-ff-perturb-low", type=float, default=0.1)
+    p.add_argument("--phase-ff-perturb-high", type=float, default=0.5)
     return p.parse_args()
 
 
@@ -2643,6 +3503,7 @@ def main() -> None:
     phases = [
         "A", "B", "C", "D", "E", "F", "G", "H", "I", "L", "A2", "D2",
         "M", "N", "O", "P", "Q", "R", "T", "U", "V", "W", "X", "Y", "Z",
+        "AA", "BB", "CC", "DD", "EE", "FF",
     ] if args.phase == "all" else [args.phase]
     log({"event": "start", "phases": phases, "args": vars(args) | {"outdir": str(args.outdir), "fig_outdir": str(args.fig_outdir)}})
 
@@ -2794,6 +3655,54 @@ def main() -> None:
         log({"event": "phase_start", "phase": "Z"})
         out = run_phase_z(cfg, args.phase_z_s_values, args.phase_z_t_values, args.phase_z_grid, args.phase_z_steps)
         log({"event": "phase_done", "phase": "Z", "csv": str(out)})
+
+    if "AA" in phases:
+        log({"event": "phase_start", "phase": "AA"})
+        out = run_phase_aa(cfg, args.phase_aa_grid, args.phase_aa_steps, args.phase_aa_batch)
+        log({"event": "phase_done", "phase": "AA", "csv": str(out)})
+
+    if "BB" in phases:
+        log({"event": "phase_start", "phase": "BB"})
+        out = run_phase_bb(cfg, args.phase_bb_lambdas, args.phase_bb_grid, args.phase_bb_steps, args.phase_bb_batch)
+        log({"event": "phase_done", "phase": "BB", "csv": str(out)})
+
+    if "CC" in phases:
+        log({"event": "phase_start", "phase": "CC (tabular)"})
+        out_tab = run_phase_cc_tabular(
+            cfg, args.phase_cc_Ls, args.phase_cc_tabular_seeds,
+            args.phase_cc_tabular_steps, args.phase_cc_tabular_batch,
+        )
+        log({"event": "phase_done", "phase": "CC (tabular)", "csv": str(out_tab)})
+        log({"event": "phase_start", "phase": "CC (MLP)"})
+        out_mlp = run_phase_cc_mlp(
+            cfg, args.phase_cc_Ls, args.phase_cc_mlp_seeds,
+            args.phase_cc_mlp_steps, args.phase_cc_mlp_batch,
+        )
+        log({"event": "phase_done", "phase": "CC (MLP)", "csv": str(out_mlp)})
+
+    if "DD" in phases:
+        log({"event": "phase_start", "phase": "DD"})
+        out = run_phase_dd(
+            cfg, args.phase_dd_qs, args.phase_dd_seeds, args.phase_dd_n0,
+            args.phase_dd_total, args.phase_dd_scale, args.phase_dd_batch,
+        )
+        log({"event": "phase_done", "phase": "DD", "csv": str(out)})
+
+    if "EE" in phases:
+        log({"event": "phase_start", "phase": "EE"})
+        out = run_phase_ee(
+            cfg, args.phase_ee_rules, args.phase_ee_seeds, args.phase_ee_warm_steps,
+            args.phase_ee_cool_steps, args.phase_ee_batch, args.phase_ee_checkpoint_every,
+        )
+        log({"event": "phase_done", "phase": "EE", "csv": str(out)})
+
+    if "FF" in phases:
+        log({"event": "phase_start", "phase": "FF"})
+        out = run_phase_ff(
+            cfg, args.phase_ff_seeds, args.phase_ff_steps, args.phase_ff_K,
+            args.phase_ff_batch, args.phase_ff_perturb_low, args.phase_ff_perturb_high,
+        )
+        log({"event": "phase_done", "phase": "FF", "csv": str(out)})
 
     log({"event": "end"})
 

@@ -20,3 +20,5 @@ artifacts/validation/pipeline.stdout
 
 # PNG duplicates of tracked PDF figures
 figures/validation/*.png
+**.npy
+**.csv

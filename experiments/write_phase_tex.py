@@ -1241,6 +1241,230 @@ def write_phase_z() -> None:
     (TEX_DIR / "phase_z.tex").write_text("\n\n".join(body) + "\n")
 
 
+def write_phase_aa() -> None:
+    csv = ART_DIR / "phase_aa_pairings.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    pairings = ["PG_PG", "MM_PG", "PG_MM", "MM_MM"]
+    labels = {
+        "PG_PG": r"PG $\times$ PG",
+        "MM_PG": r"Meta-MAPG $\times$ PG",
+        "PG_MM": r"PG $\times$ Meta-MAPG",
+        "MM_MM": r"Meta-MAPG $\times$ Meta-MAPG",
+    }
+    rows_tex = []
+    for pair in pairings:
+        sub = df[df["pair_label"] == pair]
+        k = int(sub["success"].sum())
+        n = int(len(sub))
+        p_hat, lo, hi = wilson_ci(k, n)
+        mean_welf = float(sub["welfare"].mean())
+        mean_fair = float(sub["fairness_gap"].mean())
+        rows_tex.append(
+            f"  {labels[pair]} & {p_hat*100:.1f}\\% "
+            f"[{lo*100:.1f}, {hi*100:.1f}] "
+            f"& {mean_welf:.3f} & {mean_fair:.3f} \\\\"
+        )
+    body = (
+        "\\begin{table}[h]\\centering\n"
+        "\\begin{tabular}{lccc}\\toprule\n"
+        "  Pairing & Coop. success (95\\% CI) & Mean welfare & $|u_1-u_2|$ \\\\\n"
+        "\\midrule\n"
+        + "\n".join(rows_tex) + "\n"
+        "\\bottomrule\\end{tabular}\n"
+        "\\caption{Phase~AA: asymmetric learner pairings on tabular Stag Hunt.}\n"
+        "\\label{tab:phase-aa}\\end{table}\n\n"
+        "\\begin{figure}[h]\\centering\n"
+        "  \\includegraphics[width=\\linewidth]{phase_aa_basin_atlas}\n"
+        "  \\caption{Phase~AA: 21$\\times$21 basin atlas for each method pair.}\n"
+        "  \\label{fig:phase-aa-atlas}\\end{figure}"
+    )
+    (TEX_DIR / "phase_aa.tex").write_text(body + "\n")
+
+
+def write_phase_bb() -> None:
+    csv = ART_DIR / "phase_bb_hetero.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    rows_tex = []
+    for _, row in df.iterrows():
+        frac = float(row["coop_basin_fraction"])
+        n_cells = int(row.get("n_cells", 121))
+        k = round(frac * n_cells)
+        p_hat, lo, hi = wilson_ci(k, n_cells)
+        rows_tex.append(
+            f"  $\\lambda_1={row['lambda0']:.1f}$, $\\lambda_2={row['lambda1']:.1f}$"
+            f" & {p_hat*100:.1f}\\% [{lo*100:.1f}, {hi*100:.1f}]"
+            f" & {row['mean_welfare']:.3f} & {row['fairness_gap']:.4f} \\\\"
+        )
+    body = (
+        "\\begin{table}[h]\\centering\n"
+        "\\begin{tabular}{lccc}\\toprule\n"
+        "  $(\\lambda_1, \\lambda_2)$ & Basin coverage (95\\% CI) "
+        "& Mean welfare & Fairness gap \\\\\n"
+        "\\midrule\n"
+        + "\n".join(rows_tex) + "\n"
+        "\\bottomrule\\end{tabular}\n"
+        "\\caption{Phase~BB: heterogeneous peer coefficients $(\\lambda_1,\\lambda_2)$.}\n"
+        "\\label{tab:phase-bb}\\end{table}\n\n"
+        "\\begin{figure}[h]\\centering\n"
+        "  \\includegraphics[width=0.9\\linewidth]{phase_bb_hetero}\n"
+        "  \\caption{Phase~BB: heatmaps of cooperative success and fairness gap.}\n"
+        "  \\label{fig:phase-bb}\\end{figure}"
+    )
+    (TEX_DIR / "phase_bb.tex").write_text(body + "\n")
+
+
+def write_phase_cc() -> None:
+    csv_tab = ART_DIR / "phase_cc_unroll_tab.csv"
+    csv_mlp = ART_DIR / "phase_cc_unroll_mlp.csv"
+    if not csv_tab.exists() and not csv_mlp.exists():
+        return
+    body_parts = []
+    for csv_path, label in [(csv_tab, "Tabular IPD"), (csv_mlp, "MLP IPD")]:
+        if not csv_path.exists():
+            continue
+        df = pd.read_csv(csv_path)
+        rows_tex = []
+        for (method, L), grp in df.groupby(["method", "L"]):
+            k = int(grp["success"].sum()) if "success" in grp.columns else 0
+            n = int(len(grp))
+            p_hat, lo, hi = wilson_ci(k, n)
+            method_tex = str(method).replace("_", "\\_")
+            rows_tex.append(
+                f"  {method_tex} & {int(L)} & {p_hat*100:.1f}\\% "
+                f"[{lo*100:.1f}, {hi*100:.1f}] \\\\"
+            )
+        body_parts.append(
+            f"\\paragraph{{{label}}}\n"
+            "\\begin{table}[h]\\centering\n"
+            "\\begin{tabular}{lcc}\\toprule\n"
+            "  Method & $L$ & Coop. success (95\\% CI) \\\\\n"
+            "\\midrule\n"
+            + "\n".join(rows_tex) + "\n"
+            "\\bottomrule\\end{tabular}\n"
+            f"\\caption{{Phase~CC ({label}): inner-unroll sweep.}}\n"
+            "\\label{tab:phase-cc-" + label.lower().replace(" ", "-") + "}\\end{table}"
+        )
+    body_parts.append(
+        "\\begin{figure}[h]\\centering\n"
+        "  \\includegraphics[width=0.9\\linewidth]{phase_cc_unroll_tab}\n"
+        "  \\caption{Phase~CC (tabular): cooperative success rate vs inner-unroll depth $L$.}\n"
+        "  \\label{fig:phase-cc-tab}\\end{figure}"
+    )
+    (TEX_DIR / "phase_cc.tex").write_text("\n\n".join(body_parts) + "\n")
+
+
+def write_phase_dd() -> None:
+    csv = ART_DIR / "phase_dd_qsweep.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    rows_tex = []
+    for q_val, grp in df.groupby("q"):
+        k = int(grp["success"].sum()) if "success" in grp.columns else 0
+        n = int(len(grp))
+        p_hat, lo, hi = wilson_ci(k, n)
+        stab = float(grp["second_half_coop_std"].mean()) if "second_half_coop_std" in grp.columns else float("nan")
+        rows_tex.append(
+            f"  {float(q_val):.2f} & {p_hat*100:.1f}\\% "
+            f"[{lo*100:.1f}, {hi*100:.1f}] & {stab:.4f} \\\\"
+        )
+    body = (
+        "\\begin{table}[h]\\centering\n"
+        "\\begin{tabular}{lcc}\\toprule\n"
+        "  $q$ & Coop. success (95\\% CI) & Endpoint stability (std) \\\\\n"
+        "\\midrule\n"
+        + "\n".join(rows_tex) + "\n"
+        "\\bottomrule\\end{tabular}\n"
+        "\\caption{Phase~DD: annealing exponent $q$ sweep.}\n"
+        "\\label{tab:phase-dd}\\end{table}\n\n"
+        "\\begin{figure}[h]\\centering\n"
+        "  \\includegraphics[width=0.9\\linewidth]{phase_dd_qsweep}\n"
+        "  \\caption{Phase~DD: cooperative success and endpoint stability vs $q$.}\n"
+        "  \\label{fig:phase-dd}\\end{figure}"
+    )
+    (TEX_DIR / "phase_dd.tex").write_text(body + "\n")
+
+
+def write_phase_ee() -> None:
+    csv = ART_DIR / "phase_ee_checkpoint.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    rows_tex = []
+    for rule, grp in df.groupby("rule"):
+        k = int(grp["post_cooldown_success"].sum())
+        n = int(len(grp))
+        p_hat, lo, hi = wilson_ci(k, n)
+        mean_welf = float(grp["post_cooldown_welfare"].mean())
+        rule_tex = rule.replace("_", "\\_")
+        rows_tex.append(
+            f"  \\texttt{{{rule_tex}}} & {p_hat*100:.1f}\\% "
+            f"[{lo*100:.1f}, {hi*100:.1f}] & {mean_welf:.3f} \\\\"
+        )
+    body = (
+        "\\begin{table}[h]\\centering\n"
+        "\\begin{tabular}{lcc}\\toprule\n"
+        "  Selection rule & Post-cooldown coop. success (95\\% CI) & Mean welfare \\\\\n"
+        "\\midrule\n"
+        + "\n".join(rows_tex) + "\n"
+        "\\bottomrule\\end{tabular}\n"
+        "\\caption{Phase~EE: warm-up checkpoint selection rules.}\n"
+        "\\label{tab:phase-ee}\\end{table}\n\n"
+        "\\begin{figure}[h]\\centering\n"
+        "  \\includegraphics[width=0.9\\linewidth]{phase_ee_checkpoint}\n"
+        "  \\caption{Phase~EE: post-cooldown success and welfare per checkpoint rule.}\n"
+        "  \\label{fig:phase-ee}\\end{figure}"
+    )
+    (TEX_DIR / "phase_ee.tex").write_text(body + "\n")
+
+
+def write_phase_ff() -> None:
+    csv = ART_DIR / "phase_ff_restart.csv"
+    if not csv.exists():
+        return
+    df = pd.read_csv(csv)
+    conditions = ["episode_only", "perturb_low", "perturb_high", "reinit", "ckpt_warm"]
+    pretty = {
+        "episode_only": "Episode reset only",
+        "perturb_low": r"Perturb $\sigma=0.1$",
+        "perturb_high": r"Perturb $\sigma=0.5$",
+        "reinit": "Full reinit",
+        "ckpt_warm": "Ckpt warm-start",
+    }
+    K = int(df["k"].max())
+    rows_tex = []
+    for cond in conditions:
+        sub = df[df["condition"] == cond]
+        sub_K = sub[sub["k"] == K]
+        n = sub_K["seed"].nunique()
+        ever = sub_K.groupby("seed")["success_so_far"].max()
+        k_hit = int(ever.sum())
+        p_hat, lo, hi = wilson_ci(k_hit, n)
+        rows_tex.append(
+            f"  {pretty.get(cond, cond)} & {p_hat*100:.1f}\\% "
+            f"[{lo*100:.1f}, {hi*100:.1f}] \\\\"
+        )
+    body = (
+        "\\begin{table}[h]\\centering\n"
+        "\\begin{tabular}{lc}\\toprule\n"
+        f"  Restart condition & P(coop within $K={K}$) (95\\% CI) \\\\\n"
+        "\\midrule\n"
+        + "\n".join(rows_tex) + "\n"
+        "\\bottomrule\\end{tabular}\n"
+        "\\caption{Phase~FF: cumulative cooperative success across restart budget.}\n"
+        "\\label{tab:phase-ff}\\end{table}\n\n"
+        "\\begin{figure}[h]\\centering\n"
+        "  \\includegraphics[width=0.72\\linewidth]{phase_ff_restart}\n"
+        "  \\caption{Phase~FF: P(reach cooperation by $k$) for each restart condition.}\n"
+        "  \\label{fig:phase-ff}\\end{figure}"
+    )
+    (TEX_DIR / "phase_ff.tex").write_text(body + "\n")
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument(
@@ -1276,6 +1500,12 @@ def main() -> None:
         "x": write_phase_x,
         "y": write_phase_y,
         "z": write_phase_z,
+        "aa": write_phase_aa,
+        "bb": write_phase_bb,
+        "cc": write_phase_cc,
+        "dd": write_phase_dd,
+        "ee": write_phase_ee,
+        "ff": write_phase_ff,
     }
     for phase in args.phases:
         fn = fns.get(phase.lower())

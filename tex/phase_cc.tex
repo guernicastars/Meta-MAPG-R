@@ -1,0 +1,46 @@
+\paragraph{Tabular IPD}
+\begin{table}[h]\centering
+\begin{tabular}{lcc}\toprule
+  Method & $L$ & Coop. success (95\% CI) \\
+\midrule
+  lola\_style & 1 & 15.0\% [7.1, 29.1] \\
+  lola\_style & 3 & 40.0\% [26.3, 55.4] \\
+  lola\_style & 5 & 40.0\% [26.3, 55.4] \\
+  meta\_mapg & 1 & 30.0\% [18.1, 45.4] \\
+  meta\_mapg & 3 & 50.0\% [35.2, 64.8] \\
+  meta\_mapg & 5 & 35.0\% [22.1, 50.5] \\
+  meta\_pg & 1 & 5.0\% [1.4, 16.5] \\
+  meta\_pg & 3 & 10.0\% [4.0, 23.1] \\
+  meta\_pg & 5 & 40.0\% [26.3, 55.4] \\
+  standard\_pg & 1 & 7.5\% [2.6, 19.9] \\
+  standard\_pg & 3 & 5.0\% [1.4, 16.5] \\
+  standard\_pg & 5 & 5.0\% [1.4, 16.5] \\
+\bottomrule\end{tabular}
+\caption{Phase~CC (Tabular IPD): inner-unroll sweep.}
+\label{tab:phase-cc-tabular-ipd}\end{table}
+
+\paragraph{MLP IPD}
+\begin{table}[h]\centering
+\begin{tabular}{lcc}\toprule
+  Method & $L$ & Coop. success (95\% CI) \\
+\midrule
+  lola\_style & 1 & 23.3\% [11.8, 40.9] \\
+  lola\_style & 3 & 3.3\% [0.6, 16.7] \\
+  lola\_style & 5 & 6.7\% [1.8, 21.3] \\
+  meta\_mapg & 1 & 20.0\% [9.5, 37.3] \\
+  meta\_mapg & 3 & 16.7\% [7.3, 33.6] \\
+  meta\_mapg & 5 & 16.7\% [7.3, 33.6] \\
+  meta\_pg & 1 & 13.3\% [5.3, 29.7] \\
+  meta\_pg & 3 & 33.3\% [19.2, 51.2] \\
+  meta\_pg & 5 & 10.0\% [3.5, 25.6] \\
+  standard\_pg & 1 & 0.0\% [0.0, 11.4] \\
+  standard\_pg & 3 & 0.0\% [0.0, 11.4] \\
+  standard\_pg & 5 & 0.0\% [0.0, 11.4] \\
+\bottomrule\end{tabular}
+\caption{Phase~CC (MLP IPD): inner-unroll sweep.}
+\label{tab:phase-cc-mlp-ipd}\end{table}
+
+\begin{figure}[h]\centering
+  \includegraphics[width=0.9\linewidth]{phase_cc_unroll_tab}
+  \caption{Phase~CC (tabular): cooperative success rate vs inner-unroll depth $L$.}
+  \label{fig:phase-cc-tab}\end{figure}

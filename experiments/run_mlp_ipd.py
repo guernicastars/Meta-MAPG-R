@@ -9,6 +9,7 @@ Uses DiCE-style surrogate + autograd for correct higher-order gradients.
 """
 
 import argparse
+import copy
 import csv
 import os
 import time
@@ -170,11 +171,88 @@ def compute_losses(policy0, policy1, trajs, method,
     raise ValueError(f"Unknown method: {method}")
 
 
+def _meta_step_unrolled(
+    policy0, policy1, batch_size, method, peer_coef, own_coef, inner_lr, current_lr, L,
+):
+    # L=1: original training step. L>1: first-order approx — inner PG on
+    # virtual copies (no DiCE/own/peer), outer meta gradient at L-step iterate.
+    if L == 1:
+        with torch.no_grad():
+            trajs = rollout_batch(policy0, policy1, batch_size)
+        loss0, loss1 = compute_losses(
+            policy0, policy1, trajs, method,
+            peer_coef=peer_coef, own_coef=own_coef, inner_lr=inner_lr,
+        )
+        policy0.zero_grad()
+        policy1.zero_grad()
+        loss0.backward(retain_graph=True)
+        grads0 = {n: p.grad.clone() for n, p in policy0.named_parameters() if p.grad is not None}
+        policy0.zero_grad()
+        policy1.zero_grad()
+        loss1.backward()
+        grads1 = {n: p.grad.clone() for n, p in policy1.named_parameters() if p.grad is not None}
+        with torch.no_grad():
+            for n, p in policy0.named_parameters():
+                if n in grads0:
+                    p -= current_lr * grads0[n]
+            for n, p in policy1.named_parameters():
+                if n in grads1:
+                    p -= current_lr * grads1[n]
+        return
+
+    p0_inner = copy.deepcopy(policy0)
+    p1_inner = copy.deepcopy(policy1)
+    for _ in range(L - 1):
+        with torch.no_grad():
+            trajs_inner = rollout_batch(p0_inner, p1_inner, batch_size)
+        l0_in, l1_in = compute_losses(
+            p0_inner, p1_inner, trajs_inner, "standard_pg",
+            peer_coef=0.0, own_coef=0.0, inner_lr=inner_lr,
+        )
+        p0_inner.zero_grad()
+        p1_inner.zero_grad()
+        l0_in.backward(retain_graph=True)
+        with torch.no_grad():
+            for p in p0_inner.parameters():
+                if p.grad is not None:
+                    p -= inner_lr * p.grad
+        p0_inner.zero_grad()
+        p1_inner.zero_grad()
+        l1_in.backward()
+        with torch.no_grad():
+            for p in p1_inner.parameters():
+                if p.grad is not None:
+                    p -= inner_lr * p.grad
+
+    with torch.no_grad():
+        trajs_meta = rollout_batch(p0_inner, p1_inner, batch_size)
+    loss0_meta, loss1_meta = compute_losses(
+        p0_inner, p1_inner, trajs_meta, method,
+        peer_coef=peer_coef, own_coef=own_coef, inner_lr=inner_lr,
+    )
+    p0_inner.zero_grad()
+    p1_inner.zero_grad()
+    loss0_meta.backward(retain_graph=True)
+    grads0 = {n: p.grad.clone() for n, p in p0_inner.named_parameters() if p.grad is not None}
+    p0_inner.zero_grad()
+    p1_inner.zero_grad()
+    loss1_meta.backward()
+    grads1 = {n: p.grad.clone() for n, p in p1_inner.named_parameters() if p.grad is not None}
+    with torch.no_grad():
+        for n, p in policy0.named_parameters():
+            if n in grads0:
+                p -= current_lr * grads0[n]
+        for n, p in policy1.named_parameters():
+            if n in grads1:
+                p -= current_lr * grads1[n]
+
+
 def train_one_seed(method, seed, n_steps=260, batch_size=384,
                    peer_coef=1.5, own_coef=0.35, lr=0.9, lr_power=0.24,
                    inner_lr=0.55, log_every=10,
                    schedule="constant", phase1_steps=100,
-                   anneal_scale=30, anneal_power=0.7):
+                   anneal_scale=30, anneal_power=0.7,
+                   inner_unroll=1):
     actual_seed = 1000 + 37 * seed
     torch.manual_seed(actual_seed)
     np.random.seed(actual_seed)
@@ -199,32 +277,11 @@ def train_one_seed(method, seed, n_steps=260, batch_size=384,
         else:
             raise ValueError(f"Unknown schedule: {schedule}")
 
-        with torch.no_grad():
-            trajs = rollout_batch(policy0, policy1, batch_size)
-
-        loss0, loss1 = compute_losses(
-            policy0, policy1, trajs, method,
-            peer_coef=current_peer_coef, own_coef=own_coef, inner_lr=inner_lr
+        _meta_step_unrolled(
+            policy0, policy1, batch_size, method,
+            peer_coef=current_peer_coef, own_coef=own_coef, inner_lr=inner_lr,
+            current_lr=current_lr, L=inner_unroll,
         )
-
-        policy0.zero_grad()
-        policy1.zero_grad()
-
-        loss0.backward(retain_graph=True)
-        grads0 = {n: p.grad.clone() for n, p in policy0.named_parameters() if p.grad is not None}
-        policy0.zero_grad()
-        policy1.zero_grad()
-
-        loss1.backward()
-        grads1 = {n: p.grad.clone() for n, p in policy1.named_parameters() if p.grad is not None}
-
-        with torch.no_grad():
-            for n, p in policy0.named_parameters():
-                if n in grads0:
-                    p -= current_lr * grads0[n]
-            for n, p in policy1.named_parameters():
-                if n in grads1:
-                    p -= current_lr * grads1[n]
 
         if step % log_every == 0 or step == n_steps:
             with torch.no_grad():
@@ -424,6 +481,12 @@ def main():
     parser.add_argument("--anneal_scale", type=int, default=30)
     parser.add_argument("--anneal_power", type=float, default=0.7)
     parser.add_argument("--anneal_log_every", type=int, default=20)
+    parser.add_argument(
+        "--inner_unroll",
+        type=int,
+        default=1,
+        help="Number of inner PG unroll steps L (default 1 matches the tabular L=1 estimator).",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.out_dir, exist_ok=True)
@@ -444,6 +507,7 @@ def main():
                     n_steps=args.n_steps, batch_size=args.batch_size,
                     peer_coef=args.peer_coef, own_coef=args.own_coef,
                     lr=args.lr, lr_power=args.lr_power, inner_lr=args.inner_lr,
+                    inner_unroll=args.inner_unroll,
                 )
                 method_results.append(result)
                 all_results.append(result)

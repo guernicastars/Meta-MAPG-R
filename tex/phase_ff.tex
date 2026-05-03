@@ -1,0 +1,17 @@
+\begin{table}[h]\centering
+\begin{tabular}{lc}\toprule
+  Restart condition & P(coop within $K=8$) (95\% CI) \\
+\midrule
+  Episode reset only & 38.8\% [28.8, 49.7] \\
+  Perturb $\sigma=0.1$ & 37.5\% [27.7, 48.5] \\
+  Perturb $\sigma=0.5$ & 45.0\% [34.6, 55.9] \\
+  Full reinit & 97.5\% [91.3, 99.3] \\
+  Ckpt warm-start & 47.5\% [36.9, 58.3] \\
+\bottomrule\end{tabular}
+\caption{Phase~FF: cumulative cooperative success across restart budget.}
+\label{tab:phase-ff}\end{table}
+
+\begin{figure}[h]\centering
+  \includegraphics[width=0.72\linewidth]{phase_ff_restart}
+  \caption{Phase~FF: P(reach cooperation by $k$) for each restart condition.}
+  \label{fig:phase-ff}\end{figure}
