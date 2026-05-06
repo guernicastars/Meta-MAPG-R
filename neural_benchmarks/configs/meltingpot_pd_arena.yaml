@@ -1,0 +1,24 @@
+# Plan §7.2 — Melting Pot prisoner's dilemma social dilemma.
+# Falls back to PettingZoo IPD if dm_meltingpot is unavailable.
+benchmark: meltingpot
+env_id: prisoners_dilemma_in_the_matrix__repeated
+total_steps: 1_000_000
+rollout_len: 256
+eval_every: 100_000
+eval_episodes: 50
+T_warm: 400_000
+threshold: 0.5                # average per-step return (cooperation-leaning)
+arms: [ippo, peer_only, meta_mapg, handoff]   # plan §7.5 reduced set
+seeds: 25
+ippo:
+  actor_lr: 3.0e-4
+  critic_lr: 1.0e-3
+  n_epochs: 4
+  minibatch_size: 256
+  clip_eps: 0.2
+  entropy_coef: 0.01
+  grad_clip: 0.5
+  gamma: 0.99
+  gae_lambda: 0.95
+  eta_inner: 0.1
+  correction_clip: 1.0

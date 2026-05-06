@@ -1,0 +1,23 @@
+# Plan §6.2 — Overcooked Coordination Ring (convention formation)
+benchmark: overcooked
+env_id: coordination_ring
+total_steps: 1_000_000
+rollout_len: 400
+eval_every: 100_000
+eval_episodes: 50
+T_warm: 500_000
+threshold: 5.0
+arms: [ippo, own_only, peer_only, meta_mapg, handoff]
+seeds: 25
+ippo:
+  actor_lr: 3.0e-4
+  critic_lr: 1.0e-3
+  n_epochs: 4
+  minibatch_size: 256
+  clip_eps: 0.2
+  entropy_coef: 0.01
+  grad_clip: 0.5
+  gamma: 0.99
+  gae_lambda: 0.95
+  eta_inner: 0.1
+  correction_clip: 1.0

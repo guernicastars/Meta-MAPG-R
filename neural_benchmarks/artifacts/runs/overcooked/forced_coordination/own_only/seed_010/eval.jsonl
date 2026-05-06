@@ -1,0 +1,11 @@
+{"_t": 1777997205.7819319, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 800, "wall_seconds": 32.846235513687134, "success": true}
+{"_t": 1777997494.4935687, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 100800, "wall_seconds": 321.55787992477417, "success": true}
+{"_t": 1777997776.740956, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 200800, "wall_seconds": 603.8052740097046, "success": true}
+{"_t": 1777998051.564697, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 300800, "wall_seconds": 878.6290082931519, "success": true}
+{"_t": 1777998326.2563038, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 400800, "wall_seconds": 1153.3206233978271, "success": true}
+{"_t": 1777998599.4268503, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 500800, "wall_seconds": 1426.4911682605743, "success": true}
+{"_t": 1777998874.331891, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 600800, "wall_seconds": 1701.3962025642395, "success": true}
+{"_t": 1777999149.0002096, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 700800, "wall_seconds": 1976.064527273178, "success": true}
+{"_t": 1777999426.3101826, "eval_return_mean": 0.75, "eval_return_median": 0.75, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 800800, "wall_seconds": 2253.3744938373566, "success": true}
+{"_t": 1777999703.7994194, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "soups_delivered": 0.0, "step": 900800, "wall_seconds": 2530.863737344742, "success": true}
+{"_t": 1778000011.6424875, "eval_return_mean": 0.75, "eval_return_median": 0.75, "eval_return_std": 0.0, "eval_n": 100, "soups_delivered": 0.0, "step": 1000000, "wall_seconds": 2838.706793785095, "success": true, "final": true}

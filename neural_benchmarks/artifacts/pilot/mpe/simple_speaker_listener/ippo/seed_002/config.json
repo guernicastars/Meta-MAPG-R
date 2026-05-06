@@ -1,0 +1,27 @@
+{
+  "benchmark": "mpe",
+  "env_id": "simple_speaker_listener",
+  "arm": "ippo",
+  "seed": 2,
+  "total_steps": 187500,
+  "rollout_len": 256,
+  "eval_every": 46875,
+  "eval_episodes": 50,
+  "T_warm": 200000,
+  "threshold": -10.0,
+  "output_dir": "artifacts/pilot",
+  "device": "cuda",
+  "ippo": {
+    "actor_lr": 0.0003,
+    "critic_lr": 0.001,
+    "n_epochs": 4,
+    "minibatch_size": 256,
+    "clip_eps": 0.2,
+    "entropy_coef": 0.01,
+    "grad_clip": 0.5,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "eta_inner": 0.1,
+    "correction_clip": 1.0
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "config": {
+    "benchmark": "mpe",
+    "env_id": "simple_spread",
+    "arm": "ippo",
+    "seed": 0,
+    "total_steps": 187500,
+    "rollout_len": 256,
+    "eval_every": 46875,
+    "eval_episodes": 50,
+    "T_warm": 200000,
+    "threshold": -25.0,
+    "output_dir": "artifacts/pilot",
+    "device": "cuda",
+    "ippo": {
+      "actor_lr": 0.0003,
+      "critic_lr": 0.001,
+      "n_epochs": 4,
+      "minibatch_size": 256,
+      "clip_eps": 0.2,
+      "entropy_coef": 0.01,
+      "grad_clip": 0.5,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "eta_inner": 0.1,
+      "correction_clip": 1.0
+    }
+  },
+  "first_hit_step": 48384,
+  "evals": [
+    {
+      "eval_return_mean": -33.732859908613754,
+      "eval_return_median": -33.4869671692191,
+      "eval_return_std": 11.766193024962089,
+      "eval_n": 50,
+      "step": 768,
+      "wall_seconds": 3.7337329387664795,
+      "success": false
+    },
+    {
+      "eval_return_mean": -24.87259686234055,
+      "eval_return_median": -24.585079115077498,
+      "eval_return_std": 6.0530136369311345,
+      "eval_n": 50,
+      "step": 48384,
+      "wall_seconds": 84.28690600395203,
+      "success": true
+    },
+    {
+      "eval_return_mean": -28.548413057664003,
+      "eval_return_median": -28.312800136366434,
+      "eval_return_std": 5.0965000387452895,
+      "eval_n": 50,
+      "step": 96000,
+      "wall_seconds": 165.21062088012695,
+      "success": false
+    },
+    {
+      "eval_return_mean": -27.266823863724213,
+      "eval_return_median": -27.454554505990483,
+      "eval_return_std": 5.919983364228357,
+      "eval_n": 50,
+      "step": 143616,
+      "wall_seconds": 245.42247939109802,
+      "success": false
+    }
+  ],
+  "final_eval": {
+    "eval_return_mean": -26.16727753874534,
+    "eval_return_median": -25.265466145240204,
+    "eval_return_std": 5.445179130085102,
+    "eval_n": 100,
+    "step": 188160,
+    "wall_seconds": 322.9466769695282,
+    "success": false,
+    "final": true
+  },
+  "total_steps": 188160
+}

@@ -1,0 +1,79 @@
+{
+  "config": {
+    "benchmark": "mpe",
+    "env_id": "simple_speaker_listener",
+    "arm": "ippo",
+    "seed": 2,
+    "total_steps": 187500,
+    "rollout_len": 256,
+    "eval_every": 46875,
+    "eval_episodes": 50,
+    "T_warm": 200000,
+    "threshold": -10.0,
+    "output_dir": "artifacts/pilot",
+    "device": "cuda",
+    "ippo": {
+      "actor_lr": 0.0003,
+      "critic_lr": 0.001,
+      "n_epochs": 4,
+      "minibatch_size": 256,
+      "clip_eps": 0.2,
+      "entropy_coef": 0.01,
+      "grad_clip": 0.5,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "eta_inner": 0.1,
+      "correction_clip": 1.0
+    }
+  },
+  "first_hit_step": -1,
+  "evals": [
+    {
+      "eval_return_mean": -77.63373580646122,
+      "eval_return_median": -65.2546373885542,
+      "eval_return_std": 68.3927025137954,
+      "eval_n": 50,
+      "step": 512,
+      "wall_seconds": 2.723776340484619,
+      "success": false
+    },
+    {
+      "eval_return_mean": -27.0307514093244,
+      "eval_return_median": -17.402969596835355,
+      "eval_return_std": 22.10488670567241,
+      "eval_n": 50,
+      "step": 47616,
+      "wall_seconds": 85.44735956192017,
+      "success": false
+    },
+    {
+      "eval_return_mean": -27.417832456575816,
+      "eval_return_median": -18.764729470758724,
+      "eval_return_std": 22.194051794979103,
+      "eval_n": 50,
+      "step": 94720,
+      "wall_seconds": 168.04765963554382,
+      "success": false
+    },
+    {
+      "eval_return_mean": -26.345347008999692,
+      "eval_return_median": -18.063150739741623,
+      "eval_return_std": 21.2491607439631,
+      "eval_n": 50,
+      "step": 141824,
+      "wall_seconds": 250.74736189842224,
+      "success": false
+    }
+  ],
+  "final_eval": {
+    "eval_return_mean": -24.817843718435057,
+    "eval_return_median": -18.70409236912904,
+    "eval_return_std": 20.61149646836964,
+    "eval_n": 100,
+    "step": 187904,
+    "wall_seconds": 332.8634452819824,
+    "success": false,
+    "final": true
+  },
+  "total_steps": 187904
+}

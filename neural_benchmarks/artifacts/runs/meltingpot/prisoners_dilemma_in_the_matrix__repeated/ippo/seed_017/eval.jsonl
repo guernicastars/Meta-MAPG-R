@@ -1,0 +1,11 @@
+{"_t": 1778024143.8786197, "eval_return_mean": 100.0, "eval_return_median": 100.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.25, "step": 512, "wall_seconds": 7.115283250808716, "success": true}
+{"_t": 1778024373.1396987, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 100864, "wall_seconds": 236.376366853714, "success": true}
+{"_t": 1778024605.4865022, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 201216, "wall_seconds": 468.7231595516205, "success": true}
+{"_t": 1778024837.2130775, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 301568, "wall_seconds": 700.4497451782227, "success": true}
+{"_t": 1778025069.7232819, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 401920, "wall_seconds": 932.9599502086639, "success": true}
+{"_t": 1778025303.0527222, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 502272, "wall_seconds": 1166.2893903255463, "success": true}
+{"_t": 1778025533.5837903, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 602624, "wall_seconds": 1396.8204591274261, "success": true}
+{"_t": 1778025765.7119381, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 702976, "wall_seconds": 1628.9486072063446, "success": true}
+{"_t": 1778025997.264815, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 803328, "wall_seconds": 1860.5014832019806, "success": true}
+{"_t": 1778026229.8859596, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 50, "cooperation_rate": 0.0, "step": 903680, "wall_seconds": 2093.122628211975, "success": true}
+{"_t": 1778026458.7996528, "eval_return_mean": 0.0, "eval_return_median": 0.0, "eval_return_std": 0.0, "eval_n": 100, "cooperation_rate": 0.0, "step": 1000448, "wall_seconds": 2322.0363216400146, "success": true, "final": true}

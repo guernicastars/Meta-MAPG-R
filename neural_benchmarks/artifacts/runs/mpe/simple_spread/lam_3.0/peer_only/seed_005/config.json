@@ -1,0 +1,27 @@
+{
+  "benchmark": "mpe",
+  "env_id": "simple_spread/lam_3.0",
+  "arm": "peer_only",
+  "seed": 5,
+  "total_steps": 750000,
+  "rollout_len": 256,
+  "eval_every": 100000,
+  "eval_episodes": 50,
+  "T_warm": 200000,
+  "threshold": -25.0,
+  "output_dir": "artifacts/runs",
+  "device": "cuda",
+  "ippo": {
+    "actor_lr": 0.0003,
+    "critic_lr": 0.001,
+    "n_epochs": 4,
+    "minibatch_size": 256,
+    "clip_eps": 0.2,
+    "entropy_coef": 0.01,
+    "grad_clip": 0.5,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "eta_inner": 0.30000000000000004,
+    "correction_clip": 1.0
+  }
+}

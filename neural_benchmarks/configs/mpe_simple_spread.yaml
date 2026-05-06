@@ -1,0 +1,23 @@
+# Plan §5.2 — MPE simple_spread
+benchmark: mpe
+env_id: simple_spread
+total_steps: 750_000        # plan §5.3 — ~1M envsteps
+rollout_len: 256
+eval_every:  100_000
+eval_episodes: 50
+T_warm: 200_000
+threshold: -25.0              # set after pilot, see plan §5.4
+arms: [ippo, own_only, peer_only, meta_mapg, handoff]
+seeds: 25                     # plan §5.3 minimum
+ippo:
+  actor_lr: 3.0e-4
+  critic_lr: 1.0e-3
+  n_epochs: 4
+  minibatch_size: 256
+  clip_eps: 0.2
+  entropy_coef: 0.01
+  grad_clip: 0.5
+  gamma: 0.99
+  gae_lambda: 0.95
+  eta_inner: 0.1
+  correction_clip: 1.0
