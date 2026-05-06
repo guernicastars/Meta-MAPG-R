@@ -1,0 +1,84 @@
+{
+  "config": {
+    "benchmark": "overcooked",
+    "env_id": "coordination_ring",
+    "arm": "ippo",
+    "seed": 2,
+    "total_steps": 375000,
+    "rollout_len": 400,
+    "eval_every": 93750,
+    "eval_episodes": 50,
+    "T_warm": 500000,
+    "threshold": 5.0,
+    "output_dir": "artifacts/pilot",
+    "device": "cuda",
+    "ippo": {
+      "actor_lr": 0.0003,
+      "critic_lr": 0.001,
+      "n_epochs": 4,
+      "minibatch_size": 256,
+      "clip_eps": 0.2,
+      "entropy_coef": 0.01,
+      "grad_clip": 0.5,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "eta_inner": 0.1,
+      "correction_clip": 1.0
+    }
+  },
+  "first_hit_step": -1,
+  "evals": [
+    {
+      "eval_return_mean": 0.0,
+      "eval_return_median": 0.0,
+      "eval_return_std": 0.0,
+      "eval_n": 50,
+      "soups_delivered": 0.0,
+      "step": 800,
+      "wall_seconds": 24.023841857910156,
+      "success": false
+    },
+    {
+      "eval_return_mean": 0.0,
+      "eval_return_median": 0.0,
+      "eval_return_std": 0.0,
+      "eval_n": 50,
+      "soups_delivered": 0.0,
+      "step": 95200,
+      "wall_seconds": 227.8061819076538,
+      "success": false
+    },
+    {
+      "eval_return_mean": 0.0,
+      "eval_return_median": 0.0,
+      "eval_return_std": 0.0,
+      "eval_n": 50,
+      "soups_delivered": 0.0,
+      "step": 189600,
+      "wall_seconds": 431.36637711524963,
+      "success": false
+    },
+    {
+      "eval_return_mean": 0.0,
+      "eval_return_median": 0.0,
+      "eval_return_std": 0.0,
+      "eval_n": 50,
+      "soups_delivered": 0.0,
+      "step": 284000,
+      "wall_seconds": 634.5444624423981,
+      "success": false
+    }
+  ],
+  "final_eval": {
+    "eval_return_mean": 0.0,
+    "eval_return_median": 0.0,
+    "eval_return_std": 0.0,
+    "eval_n": 100,
+    "soups_delivered": 0.0,
+    "step": 375200,
+    "wall_seconds": 859.8351471424103,
+    "success": false,
+    "final": true
+  },
+  "total_steps": 375200
+}

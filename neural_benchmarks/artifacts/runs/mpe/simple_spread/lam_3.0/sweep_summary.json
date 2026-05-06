@@ -1,61 +1,5 @@
 [
   {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
-    "config": {
-      "benchmark": "mpe",
-      "env_id": "simple_spread/lam_3.0",
-      "arm": "peer_only",
-      "seed": 0,
-      "total_steps": 750000,
-      "rollout_len": 256,
-      "eval_every": 100000,
-      "eval_episodes": 50,
-      "T_warm": 200000,
-      "threshold": -25.0,
-      "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
-  },
-  {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
-    "config": {
-      "benchmark": "mpe",
-      "env_id": "simple_spread/lam_3.0",
-      "arm": "peer_only",
-      "seed": 8,
-      "total_steps": 750000,
-      "rollout_len": 256,
-      "eval_every": 100000,
-      "eval_episodes": 50,
-      "T_warm": 200000,
-      "threshold": -25.0,
-      "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
-  },
-  {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
-    "config": {
-      "benchmark": "mpe",
-      "env_id": "simple_spread/lam_3.0",
-      "arm": "peer_only",
-      "seed": 9,
-      "total_steps": 750000,
-      "rollout_len": 256,
-      "eval_every": 100000,
-      "eval_episodes": 50,
-      "T_warm": 200000,
-      "threshold": -25.0,
-      "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
-  },
-  {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
     "config": {
       "benchmark": "mpe",
       "env_id": "simple_spread/lam_3.0",
@@ -68,12 +12,109 @@
       "T_warm": 200000,
       "threshold": -25.0,
       "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 201984,
+    "evals": [
+      {
+        "eval_return_mean": -41.41104498042327,
+        "eval_return_median": -38.45393253530047,
+        "eval_return_std": 11.973635546625772,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.306059122085571,
+        "success": false
+      },
+      {
+        "eval_return_mean": -26.6001001766454,
+        "eval_return_median": -26.275682928059652,
+        "eval_return_std": 5.0113449949334745,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 249.89535999298096,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.21807855151262,
+        "eval_return_median": -23.92073604285433,
+        "eval_return_std": 5.459829056806993,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 493.03837418556213,
+        "success": true
+      },
+      {
+        "eval_return_mean": -25.995524065538216,
+        "eval_return_median": -25.49158069223523,
+        "eval_return_std": 6.6816578729971825,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 737.2182569503784,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.24359765761147,
+        "eval_return_median": -23.40322127134592,
+        "eval_return_std": 6.3939455990389495,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 981.486072063446,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.789141605682243,
+        "eval_return_median": -22.80158056301923,
+        "eval_return_std": 6.172084495628157,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1225.082449913025,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.084708992481737,
+        "eval_return_median": -21.681540308483793,
+        "eval_return_std": 5.997713321968176,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1468.738064289093,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.98816900804202,
+        "eval_return_median": -21.513284058679872,
+        "eval_return_std": 6.19121231746918,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1713.5940835475922,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -22.71353627612034,
+      "eval_return_median": -22.60685491332523,
+      "eval_return_std": 5.434476239116903,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1828.112783908844,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
   },
   {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
     "config": {
       "benchmark": "mpe",
       "env_id": "simple_spread/lam_3.0",
@@ -86,30 +127,109 @@
       "T_warm": 200000,
       "threshold": -25.0,
       "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 302592,
+    "evals": [
+      {
+        "eval_return_mean": -36.623681670250704,
+        "eval_return_median": -34.444031813634474,
+        "eval_return_std": 15.349546924632099,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.2395713329315186,
+        "success": false
+      },
+      {
+        "eval_return_mean": -29.417678250966382,
+        "eval_return_median": -28.472304445050995,
+        "eval_return_std": 7.445057952196017,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 250.16800618171692,
+        "success": false
+      },
+      {
+        "eval_return_mean": -31.618117938155294,
+        "eval_return_median": -32.8984662995814,
+        "eval_return_std": 9.509602785280126,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 496.0244290828705,
+        "success": false
+      },
+      {
+        "eval_return_mean": -23.780809867916147,
+        "eval_return_median": -23.201088682946367,
+        "eval_return_std": 5.492091827206674,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 741.4612107276917,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.66582222910722,
+        "eval_return_median": -23.12866565345018,
+        "eval_return_std": 5.568195104980663,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 986.1941685676575,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.781160826550614,
+        "eval_return_median": -22.915654435945644,
+        "eval_return_std": 5.091566445927194,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1231.2067921161652,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.06114607776029,
+        "eval_return_median": -21.258185522739552,
+        "eval_return_std": 5.616613315148326,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1474.4199452400208,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.773841397847658,
+        "eval_return_median": -21.577620872003607,
+        "eval_return_std": 5.61022791786067,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1718.6199600696564,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -21.52437678013022,
+      "eval_return_median": -21.00584118559675,
+      "eval_return_std": 5.400512892915182,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1832.0990052223206,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
   },
   {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
-    "config": {
-      "benchmark": "mpe",
-      "env_id": "simple_spread/lam_3.0",
-      "arm": "peer_only",
-      "seed": 1,
-      "total_steps": 750000,
-      "rollout_len": 256,
-      "eval_every": 100000,
-      "eval_episodes": 50,
-      "T_warm": 200000,
-      "threshold": -25.0,
-      "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
-  },
-  {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
     "config": {
       "benchmark": "mpe",
       "env_id": "simple_spread/lam_3.0",
@@ -122,30 +242,109 @@
       "T_warm": 200000,
       "threshold": -25.0,
       "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 101376,
+    "evals": [
+      {
+        "eval_return_mean": -38.043758880303464,
+        "eval_return_median": -34.16664535318411,
+        "eval_return_std": 13.743895537566793,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.2600250244140625,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.542384596102643,
+        "eval_return_median": -24.52423012096228,
+        "eval_return_std": 6.089431093274677,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 250.45271158218384,
+        "success": true
+      },
+      {
+        "eval_return_mean": -29.83558789460598,
+        "eval_return_median": -28.67927711565051,
+        "eval_return_std": 5.631127339523112,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 495.3676679134369,
+        "success": false
+      },
+      {
+        "eval_return_mean": -26.577654786590575,
+        "eval_return_median": -26.60901788422764,
+        "eval_return_std": 6.381709260070788,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 740.9395825862885,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.217287957339018,
+        "eval_return_median": -24.16851182225357,
+        "eval_return_std": 5.735247398645625,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 984.6656966209412,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.108887869641457,
+        "eval_return_median": -22.23421960442508,
+        "eval_return_std": 4.784907459748752,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1229.7183833122253,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.906427351276278,
+        "eval_return_median": -21.749466099108133,
+        "eval_return_std": 4.671469975508959,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1473.3377404212952,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.82660660417338,
+        "eval_return_median": -21.622330083510747,
+        "eval_return_std": 4.887125078012476,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1717.4759058952332,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -21.573854045792658,
+      "eval_return_median": -21.675226229552162,
+      "eval_return_std": 5.116121949181991,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1832.4507825374603,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
   },
   {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
-    "config": {
-      "benchmark": "mpe",
-      "env_id": "simple_spread/lam_3.0",
-      "arm": "peer_only",
-      "seed": 2,
-      "total_steps": 750000,
-      "rollout_len": 256,
-      "eval_every": 100000,
-      "eval_episodes": 50,
-      "T_warm": 200000,
-      "threshold": -25.0,
-      "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
-  },
-  {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
     "config": {
       "benchmark": "mpe",
       "env_id": "simple_spread/lam_3.0",
@@ -158,17 +357,114 @@
       "T_warm": 200000,
       "threshold": -25.0,
       "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 403200,
+    "evals": [
+      {
+        "eval_return_mean": -36.54447784327299,
+        "eval_return_median": -33.614701673313846,
+        "eval_return_std": 12.535630983211101,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.226203203201294,
+        "success": false
+      },
+      {
+        "eval_return_mean": -35.030866278249945,
+        "eval_return_median": -34.11471578304274,
+        "eval_return_std": 13.65051171629737,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 251.41380548477173,
+        "success": false
+      },
+      {
+        "eval_return_mean": -30.67341222224502,
+        "eval_return_median": -29.10715071786657,
+        "eval_return_std": 8.62090773930674,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 495.4084074497223,
+        "success": false
+      },
+      {
+        "eval_return_mean": -28.04743456980953,
+        "eval_return_median": -27.28294975458521,
+        "eval_return_std": 6.637287745403202,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 741.6842877864838,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.553017948640132,
+        "eval_return_median": -24.50795750662934,
+        "eval_return_std": 4.73229761961097,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 986.8245649337769,
+        "success": true
+      },
+      {
+        "eval_return_mean": -23.640916654510924,
+        "eval_return_median": -24.501071389297806,
+        "eval_return_std": 5.765254416296073,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1233.343406677246,
+        "success": true
+      },
+      {
+        "eval_return_mean": -23.013321358786207,
+        "eval_return_median": -23.731656167611522,
+        "eval_return_std": 5.462836944986325,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1478.3342230319977,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.923475621524226,
+        "eval_return_median": -22.46899235693104,
+        "eval_return_std": 5.4614799076252964,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1722.8696219921112,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -22.019283162485706,
+      "eval_return_median": -22.864945794236334,
+      "eval_return_std": 5.473545142701611,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1835.872764825821,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
   },
   {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
     "config": {
       "benchmark": "mpe",
       "env_id": "simple_spread/lam_3.0",
       "arm": "peer_only",
-      "seed": 5,
+      "seed": 8,
       "total_steps": 750000,
       "rollout_len": 256,
       "eval_every": 100000,
@@ -176,17 +472,114 @@
       "T_warm": 200000,
       "threshold": -25.0,
       "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 101376,
+    "evals": [
+      {
+        "eval_return_mean": -34.90900815816108,
+        "eval_return_median": -32.58946985715295,
+        "eval_return_std": 12.455576357098769,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.22937798500061,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.021382959571095,
+        "eval_return_median": -23.06844631808503,
+        "eval_return_std": 5.696436798877375,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 251.4120523929596,
+        "success": true
+      },
+      {
+        "eval_return_mean": -25.3222872273896,
+        "eval_return_median": -24.95802056121178,
+        "eval_return_std": 6.3873043795556965,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 497.0816345214844,
+        "success": false
+      },
+      {
+        "eval_return_mean": -21.319939117008868,
+        "eval_return_median": -20.68661873175107,
+        "eval_return_std": 5.106739466886238,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 743.330427646637,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.812790738155226,
+        "eval_return_median": -20.687946940410903,
+        "eval_return_std": 4.821597629934925,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 988.4377336502075,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.059033186669204,
+        "eval_return_median": -21.546808675080094,
+        "eval_return_std": 4.6141906733727005,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1234.8342266082764,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.574850878470816,
+        "eval_return_median": -21.02807034371165,
+        "eval_return_std": 4.737755125546958,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1479.3258559703827,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.649076082770243,
+        "eval_return_median": -20.62142180434558,
+        "eval_return_std": 4.593645929370439,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1722.5274138450623,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -21.773535833102578,
+      "eval_return_median": -21.576808188767895,
+      "eval_return_std": 5.308216706495205,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1836.8410549163818,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
   },
   {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
     "config": {
       "benchmark": "mpe",
       "env_id": "simple_spread/lam_3.0",
       "arm": "peer_only",
-      "seed": 6,
+      "seed": 0,
       "total_steps": 750000,
       "rollout_len": 256,
       "eval_every": 100000,
@@ -194,12 +587,109 @@
       "T_warm": 200000,
       "threshold": -25.0,
       "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 302592,
+    "evals": [
+      {
+        "eval_return_mean": -33.732859908613754,
+        "eval_return_median": -33.4869671692191,
+        "eval_return_std": 11.766193024962089,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.101444721221924,
+        "success": false
+      },
+      {
+        "eval_return_mean": -27.038275251471234,
+        "eval_return_median": -25.817082991123385,
+        "eval_return_std": 6.050309128140798,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 251.16930532455444,
+        "success": false
+      },
+      {
+        "eval_return_mean": -25.051026023364912,
+        "eval_return_median": -23.916285629093977,
+        "eval_return_std": 5.415564642440159,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 497.17276883125305,
+        "success": false
+      },
+      {
+        "eval_return_mean": -23.22817867007453,
+        "eval_return_median": -23.013254075814586,
+        "eval_return_std": 4.728947110509892,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 744.237202167511,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.436424871690473,
+        "eval_return_median": -21.686835150179,
+        "eval_return_std": 4.970768804815698,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 988.7642517089844,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.40383703884683,
+        "eval_return_median": -22.176289733662394,
+        "eval_return_std": 5.1093146964992995,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1235.1392996311188,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.07344135857777,
+        "eval_return_median": -21.81005338434031,
+        "eval_return_std": 5.366778053876696,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1480.7104165554047,
+        "success": true
+      },
+      {
+        "eval_return_mean": -19.88600712610493,
+        "eval_return_median": -19.862098570681518,
+        "eval_return_std": 4.967756474199635,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1726.7824575901031,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -19.820302515871717,
+      "eval_return_median": -19.08801486589613,
+      "eval_return_std": 5.174167104667414,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1840.5060107707977,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
   },
   {
-    "error": "unsupported MPE env: simple_spread/lam_3.0",
-    "trace": "Traceback (most recent call last):\n  File \"/workspace/meta_mapg_neural/meta_mapg/orchestrator.py\", line 56, in _worker\n    return train(cfg)\n  File \"/workspace/meta_mapg_neural/meta_mapg/train.py\", line 165, in train\n    env = make_env(cfg.benchmark, cfg.env_id, seed=cfg.seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/__init__.py\", line 15, in make_env\n    return make_mpe(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 122, in make_mpe\n    return MPEEnv(env_id, seed=seed)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 55, in __init__\n    mod = _import_mpe(env_id)\n  File \"/workspace/meta_mapg_neural/meta_mapg/envs/mpe.py\", line 37, in _import_mpe\n    raise ValueError(f\"unsupported MPE env: {env_id}\")\nValueError: unsupported MPE env: simple_spread/lam_3.0\n",
     "config": {
       "benchmark": "mpe",
       "env_id": "simple_spread/lam_3.0",
@@ -212,7 +702,681 @@
       "T_warm": 200000,
       "threshold": -25.0,
       "output_dir": "artifacts/runs",
-      "device": "cuda"
-    }
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 201984,
+    "evals": [
+      {
+        "eval_return_mean": -39.073904698701284,
+        "eval_return_median": -37.64716849832651,
+        "eval_return_std": 10.923781890551217,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.29144287109375,
+        "success": false
+      },
+      {
+        "eval_return_mean": -26.621291451519618,
+        "eval_return_median": -27.24357720726651,
+        "eval_return_std": 7.539552131225227,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 251.859721660614,
+        "success": false
+      },
+      {
+        "eval_return_mean": -23.175511689577316,
+        "eval_return_median": -23.524344163889804,
+        "eval_return_std": 6.038675180015013,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 496.3676817417145,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.51524157313288,
+        "eval_return_median": -21.00391021185886,
+        "eval_return_std": 5.2445712132401585,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 742.0850880146027,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.492379724937923,
+        "eval_return_median": -21.355471779036442,
+        "eval_return_std": 4.990274795393579,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 986.7141892910004,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.698329389680033,
+        "eval_return_median": -20.809552597659604,
+        "eval_return_std": 4.492525719333951,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1232.6054503917694,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.58054123608151,
+        "eval_return_median": -20.52585811742174,
+        "eval_return_std": 4.492822639587944,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1480.5095355510712,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.09561488108858,
+        "eval_return_median": -19.52975625785207,
+        "eval_return_std": 5.113562023413012,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1731.3698999881744,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -21.402026610230948,
+      "eval_return_median": -21.185593422291525,
+      "eval_return_std": 5.112290742172449,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1842.1936786174774,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
+  },
+  {
+    "config": {
+      "benchmark": "mpe",
+      "env_id": "simple_spread/lam_3.0",
+      "arm": "peer_only",
+      "seed": 6,
+      "total_steps": 750000,
+      "rollout_len": 256,
+      "eval_every": 100000,
+      "eval_episodes": 50,
+      "T_warm": 200000,
+      "threshold": -25.0,
+      "output_dir": "artifacts/runs",
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 201984,
+    "evals": [
+      {
+        "eval_return_mean": -34.43452054108749,
+        "eval_return_median": -34.099935399445,
+        "eval_return_std": 11.103627453302726,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.2533204555511475,
+        "success": false
+      },
+      {
+        "eval_return_mean": -25.19509238739663,
+        "eval_return_median": -24.982671056522648,
+        "eval_return_std": 4.80987479543888,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 248.37599778175354,
+        "success": false
+      },
+      {
+        "eval_return_mean": -23.68425495307596,
+        "eval_return_median": -24.361122864537016,
+        "eval_return_std": 4.750084608606076,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 489.5496332645416,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.461542020750343,
+        "eval_return_median": -22.468604949739422,
+        "eval_return_std": 4.48525886232624,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 734.333657503128,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.06998331300406,
+        "eval_return_median": -22.27896632222061,
+        "eval_return_std": 5.301369239240412,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 992.7818839550018,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.74094909659933,
+        "eval_return_median": -21.313242626381392,
+        "eval_return_std": 5.03034290860364,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1242.165687084198,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.386489540347785,
+        "eval_return_median": -20.732663299780505,
+        "eval_return_std": 4.825605445656886,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1484.3178029060364,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.868633085678116,
+        "eval_return_median": -21.64088940927046,
+        "eval_return_std": 4.996484421968142,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1728.7081813812256,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -20.82877964041406,
+      "eval_return_median": -20.5337503879012,
+      "eval_return_std": 5.334705005456075,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1847.8644168376923,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
+  },
+  {
+    "config": {
+      "benchmark": "mpe",
+      "env_id": "simple_spread/lam_3.0",
+      "arm": "peer_only",
+      "seed": 2,
+      "total_steps": 750000,
+      "rollout_len": 256,
+      "eval_every": 100000,
+      "eval_episodes": 50,
+      "T_warm": 200000,
+      "threshold": -25.0,
+      "output_dir": "artifacts/runs",
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 101376,
+    "evals": [
+      {
+        "eval_return_mean": -30.884663371065713,
+        "eval_return_median": -31.429845146291903,
+        "eval_return_std": 7.376786104640298,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.282363414764404,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.872749074512818,
+        "eval_return_median": -23.836672064718485,
+        "eval_return_std": 5.352795265006972,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 251.56665587425232,
+        "success": true
+      },
+      {
+        "eval_return_mean": -30.593493223292402,
+        "eval_return_median": -29.43573190692355,
+        "eval_return_std": 6.246655116588316,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 520.9421491622925,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.17335426140408,
+        "eval_return_median": -24.608856619452276,
+        "eval_return_std": 5.22405531044047,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 766.7263541221619,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.021620439160223,
+        "eval_return_median": -21.47645606905347,
+        "eval_return_std": 5.505151421730183,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 1011.7221677303314,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.25785478666408,
+        "eval_return_median": -21.55503949821724,
+        "eval_return_std": 5.4491133307791095,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1259.258135318756,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.159477861986986,
+        "eval_return_median": -20.88316177610556,
+        "eval_return_std": 5.278466120180647,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1502.8131384849548,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.98397779489624,
+        "eval_return_median": -21.463873867110564,
+        "eval_return_std": 5.502381830443864,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1749.2701144218445,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -21.16653913040504,
+      "eval_return_median": -21.111401284494395,
+      "eval_return_std": 4.800776937707071,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1856.326294183731,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
+  },
+  {
+    "config": {
+      "benchmark": "mpe",
+      "env_id": "simple_spread/lam_3.0",
+      "arm": "peer_only",
+      "seed": 1,
+      "total_steps": 750000,
+      "rollout_len": 256,
+      "eval_every": 100000,
+      "eval_episodes": 50,
+      "T_warm": 200000,
+      "threshold": -25.0,
+      "output_dir": "artifacts/runs",
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 503808,
+    "evals": [
+      {
+        "eval_return_mean": -28.01873619629396,
+        "eval_return_median": -27.638959289097244,
+        "eval_return_std": 7.2071388551896,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.477149963378906,
+        "success": false
+      },
+      {
+        "eval_return_mean": -27.508887177800684,
+        "eval_return_median": -27.20817522333283,
+        "eval_return_std": 7.197754784681403,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 255.90008783340454,
+        "success": false
+      },
+      {
+        "eval_return_mean": -34.92389026886275,
+        "eval_return_median": -33.12473268926934,
+        "eval_return_std": 11.394613948796657,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 506.74670672416687,
+        "success": false
+      },
+      {
+        "eval_return_mean": -25.759145173307243,
+        "eval_return_median": -25.428316263974924,
+        "eval_return_std": 6.466796750009288,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 755.4126555919647,
+        "success": false
+      },
+      {
+        "eval_return_mean": -25.856061248938605,
+        "eval_return_median": -25.466696362489955,
+        "eval_return_std": 6.047281811524354,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 998.9109060764313,
+        "success": false
+      },
+      {
+        "eval_return_mean": -23.99371585025226,
+        "eval_return_median": -23.241590008906563,
+        "eval_return_std": 5.865367495818154,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1247.3747744560242,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.899352302257466,
+        "eval_return_median": -21.74513896717565,
+        "eval_return_std": 5.435475617751474,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1498.6188349723816,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.065981647814947,
+        "eval_return_median": -21.34029946405307,
+        "eval_return_std": 5.930818430704586,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1749.330531835556,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -21.082946422933148,
+      "eval_return_median": -20.92740366587558,
+      "eval_return_std": 5.512259742142892,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1866.0432929992676,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
+  },
+  {
+    "config": {
+      "benchmark": "mpe",
+      "env_id": "simple_spread/lam_3.0",
+      "arm": "peer_only",
+      "seed": 9,
+      "total_steps": 750000,
+      "rollout_len": 256,
+      "eval_every": 100000,
+      "eval_episodes": 50,
+      "T_warm": 200000,
+      "threshold": -25.0,
+      "output_dir": "artifacts/runs",
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 101376,
+    "evals": [
+      {
+        "eval_return_mean": -25.727544934888687,
+        "eval_return_median": -24.151765438246485,
+        "eval_return_std": 7.04211023303163,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.212014436721802,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.283089882896387,
+        "eval_return_median": -24.893736290783046,
+        "eval_return_std": 5.388477335455636,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 254.6280415058136,
+        "success": true
+      },
+      {
+        "eval_return_mean": -23.72176671404153,
+        "eval_return_median": -21.97273780277201,
+        "eval_return_std": 6.464521364610441,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 505.3562660217285,
+        "success": true
+      },
+      {
+        "eval_return_mean": -22.8508389263925,
+        "eval_return_median": -22.604000912594998,
+        "eval_return_std": 5.188827836072676,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 755.2025599479675,
+        "success": true
+      },
+      {
+        "eval_return_mean": -20.781321634629506,
+        "eval_return_median": -20.831546106531732,
+        "eval_return_std": 4.950479760705223,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 1004.7903137207031,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.242086378513832,
+        "eval_return_median": -21.256916498383937,
+        "eval_return_std": 5.449374020397194,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1254.2743380069733,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.459347831300484,
+        "eval_return_median": -21.250861447348463,
+        "eval_return_std": 5.595612653557448,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1504.9664642810822,
+        "success": true
+      },
+      {
+        "eval_return_mean": -21.224167855605696,
+        "eval_return_median": -21.106156465203863,
+        "eval_return_std": 5.236267998398618,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1755.6144256591797,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -21.97005410732255,
+      "eval_return_median": -21.971557736190828,
+      "eval_return_std": 5.1594012046984075,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1871.3029868602753,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
+  },
+  {
+    "config": {
+      "benchmark": "mpe",
+      "env_id": "simple_spread/lam_3.0",
+      "arm": "peer_only",
+      "seed": 5,
+      "total_steps": 750000,
+      "rollout_len": 256,
+      "eval_every": 100000,
+      "eval_episodes": 50,
+      "T_warm": 200000,
+      "threshold": -25.0,
+      "output_dir": "artifacts/runs",
+      "device": "cuda",
+      "ippo": {
+        "actor_lr": 0.0003,
+        "critic_lr": 0.001,
+        "n_epochs": 4,
+        "minibatch_size": 256,
+        "clip_eps": 0.2,
+        "entropy_coef": 0.01,
+        "grad_clip": 0.5,
+        "gamma": 0.99,
+        "gae_lambda": 0.95,
+        "eta_inner": 0.30000000000000004,
+        "correction_clip": 1.0
+      }
+    },
+    "first_hit_step": 403200,
+    "evals": [
+      {
+        "eval_return_mean": -30.453422445622564,
+        "eval_return_median": -27.949400486509845,
+        "eval_return_std": 9.749237068134642,
+        "eval_n": 50,
+        "step": 768,
+        "wall_seconds": 5.326001405715942,
+        "success": false
+      },
+      {
+        "eval_return_mean": -26.45938005073447,
+        "eval_return_median": -25.52902007040925,
+        "eval_return_std": 7.004383003972049,
+        "eval_n": 50,
+        "step": 101376,
+        "wall_seconds": 255.31707286834717,
+        "success": false
+      },
+      {
+        "eval_return_mean": -27.85146068791271,
+        "eval_return_median": -27.660707891274903,
+        "eval_return_std": 5.965457131455534,
+        "eval_n": 50,
+        "step": 201984,
+        "wall_seconds": 505.1042459011078,
+        "success": false
+      },
+      {
+        "eval_return_mean": -25.96168381791975,
+        "eval_return_median": -25.173561645878593,
+        "eval_return_std": 5.9597660742930145,
+        "eval_n": 50,
+        "step": 302592,
+        "wall_seconds": 770.1776249408722,
+        "success": false
+      },
+      {
+        "eval_return_mean": -24.676618888898464,
+        "eval_return_median": -24.62358904191393,
+        "eval_return_std": 5.53458999934856,
+        "eval_n": 50,
+        "step": 403200,
+        "wall_seconds": 1019.3335764408112,
+        "success": true
+      },
+      {
+        "eval_return_mean": -25.24929835750161,
+        "eval_return_median": -24.9290621505154,
+        "eval_return_std": 5.844716465108121,
+        "eval_n": 50,
+        "step": 503808,
+        "wall_seconds": 1272.9012229442596,
+        "success": false
+      },
+      {
+        "eval_return_mean": -25.05678532862323,
+        "eval_return_median": -24.463912597181142,
+        "eval_return_std": 5.882042190226801,
+        "eval_n": 50,
+        "step": 604416,
+        "wall_seconds": 1524.401270866394,
+        "success": false
+      },
+      {
+        "eval_return_mean": -23.274725882105418,
+        "eval_return_median": -23.162817965490994,
+        "eval_return_std": 5.9634613615097045,
+        "eval_n": 50,
+        "step": 705024,
+        "wall_seconds": 1777.0852041244507,
+        "success": true
+      }
+    ],
+    "final_eval": {
+      "eval_return_mean": -23.191874459457672,
+      "eval_return_median": -23.453873062128764,
+      "eval_return_std": 5.86375057478858,
+      "eval_n": 100,
+      "step": 750336,
+      "wall_seconds": 1884.8173320293427,
+      "success": true,
+      "final": true
+    },
+    "total_steps": 750336
   }
 ]
