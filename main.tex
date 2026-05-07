@@ -297,7 +297,7 @@ In this section we establish our main results. We show that the
 opponent-aware correction $M_L(\phi)$ can expand the certified 
 attraction region around a desirable stable Nash equilibrium, increasing 
 $p_{\mathrm{entry}}(\text{Meta-MAPG}, T)$ relative to plain policy 
-gradient (Proposition~\ref{prop:local-drift}). We then show that annealing 
+gradient (Proposition~\ref{prop:basin}). We then show that annealing 
 the correction after basin entry recovers the original Nash target 
 (Theorem~\ref{thm:two-phase}), and that independent policy initialisations amplify $p_{\mathrm{entry}}$ geometrically, making the desirable basin increasingly likely to be reached (Theorem~\ref{thm:restart}). All 
 proofs are deferred to the appendix.
@@ -337,7 +337,7 @@ Together these effects make precise the sense in which Meta-MAPG improves equili
 annealing ensures the final convergence target remains $\phi^*$.
 
 \begin{proposition}[Opponent-aware basin expansion]
-\label{prop:local-drift}
+\label{prop:basin}
 Fix an SOS Nash equilibrium $\phi^*$ of $v$ with drift constant $\mu > 0$, 
 and suppose $v, M_L \in C^1$ near $\phi^*$. Define
 \[
@@ -374,24 +374,22 @@ relative to plain policy gradient.
 \end{enumerate}
 \end{proposition}
 
- If $\mu_M \leq 0$, the
- correction 
-does not enlarge the certified basin. - do we need to say that?
+If $\mu_M \leq 0$, this sufficient condition does not certify basin enlargement; the proposition is silent on that case.
 
 
 \subsection{Local Nash Convergence and Globalisation via Restarts}
 
-The convergence of Meta-MAPG to a stable Nash equilibrium has remained an open question, which we are now ready to resolve. Proposition~\ref{prop:local-drift} establishes that opponent-aware shaping enlarges the certified attraction basin, but does so by moving the fixed point to a shifted Nash point $\phi^*_\lambda$ rather than the original $\phi^*$. Exploiting this enlarged geometry for basin entry while ensuring the asymptotic target remains the original Nash equilibrium therefore requires careful scheduling. \cref{thm:two-phase} resolves this tension with a two-phase procedure. Constant shaping during the first phase drives iterates into the enlarged neighbourhood, and annealing during the second phase pulls the shifted fixed-point back to $\phi^*$, from which Lemma~\ref{lem:local} delivers an almost-sure convergence. The following Theorem~\ref{thm:restart} then globalises this local guarantee to an almost-sure global convergence result via finitely many independent restarts.
+The convergence of Meta-MAPG to a stable Nash equilibrium has remained an open question, which we are now ready to resolve. Proposition~\ref{prop:basin} establishes that opponent-aware shaping enlarges the certified attraction basin, but does so by moving the fixed point to a shifted Nash point $\phi^*_\lambda$ rather than the original $\phi^*$. Exploiting this enlarged geometry for basin entry while ensuring the asymptotic target remains the original Nash equilibrium therefore requires careful scheduling. \cref{thm:two-phase} resolves this tension with a two-phase procedure. Constant shaping during the first phase drives iterates into the enlarged neighbourhood, and annealing during the second phase pulls the shifted fixed-point back to $\phi^*$, from which Lemma~\ref{lem:local} delivers an almost-sure convergence. The following Theorem~\ref{thm:restart} then globalises this local guarantee to an almost-sure global convergence result via finitely many independent restarts.
 
 \begin{theorem}[Two-phase Meta-MAPG convergence]\label{thm:two-phase}
 Fix an SOS Nash equilibrium $\phi^*$ and let $r_{\mathrm{att}} > 0$ be an 
 attracting radius for $\phi^*$ under Lemma~\ref{lem:local}. Let 
 $\bar\lambda > 0$ and $c_{\mathrm{shift}} > 0$ be local constants such 
-that the shifted fixed-point branch from Proposition~\ref{prop:local-drift} 
+that the shifted fixed-point branch from Proposition~\ref{prop:basin} 
 satisfies $\|\phi^*_\lambda - \phi^*\| \le c_{\mathrm{shift}} \lambda$ for 
 all $\lambda \in [0, \bar\lambda]$. For a chosen $\lambda_c \in (0,\bar\lambda]$, 
 let $\B_\rho = \{\phi : \|\phi - \phi^*_{\lambda_c}\| \le \rho\}$ be the 
-phase 1 SOS ball from Proposition~\ref{prop:local-drift} with drift constant 
+phase 1 SOS ball from Proposition~\ref{prop:basin} with drift constant 
 $\mu_{\lambda_c} > 0$. Assume $\rho \le r_{\mathrm{att}}$ and 
 $\lambda_c \le \rho/(4c_{\mathrm{shift}})$.
 
@@ -428,7 +426,7 @@ O(1/(\alpha_0\mu))$ for plain PG, the following corollary quantifies the
 resulting speedup.
 
 \begin{corollary}[Basin-entry speedup]\label{cor:speedup}
-Under the drift-improvement condition of Proposition~\ref{prop:local-drift}, 
+Under the drift-improvement condition of Proposition~\ref{prop:basin}, 
 Meta-MAPG shaping reduces the certified basin-entry horizon relative to PG by
 \[
 \frac{N_0(0)}{N_0(\lambda)} \gtrsim 1 + \frac{\lambda\mu_M}{\mu}
@@ -690,7 +688,10 @@ Both $J_v$ and $J_M$ are real matrices; their symmetric parts $\operatorname{sym
 \[
 \lambda_{\max}\!\bigl(\operatorname{sym}(J_v+\lambda J_M)\bigr)\le \lambda_{\max}\!\bigl(\operatorname{sym}(J_v)\bigr)+\lambda\,\lambda_{\max}\!\bigl(\operatorname{sym}(J_M)\bigr),
 \]
-and negating, together with the $O(\lambda^2)$ evaluation shift, yields \eqref{eq:weyl}.
+and negating, together with the $O(\lambda^2)$ evaluation shift, yields
+\begin{equation}\label{eq:weyl}
+-\lambda_{\max}\!\bigl(\operatorname{sym}(DF_\lambda(\phi^\ast_\lambda))\bigr)\;\ge\;\mu+\lambda\mu_M-O(\lambda^2).
+\end{equation}
 
 \paragraph{Certified radius.}
 Let $\mu_\lambda:=\mu+\lambda\mu_M$. Fix $\phi\in\B_{\rho_\lambda}(\phi^\ast_\lambda)$ and write $x:=\phi-\phi^\ast_\lambda$. Since $F_\lambda(\phi^\ast_\lambda)=0$, Taylor's theorem with integral remainder gives
